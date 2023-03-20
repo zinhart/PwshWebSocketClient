@@ -2,11 +2,12 @@
 # PowerShell Module for a WebSocket connection. Meant to be commandline alternative to python's socket.io
 ##
 $script:websocket = $null
+# the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
+# with this method we can cancel receive after a period of time
 $script:cancellation_token = New-Object System.Threading.CancellationToken
 $script:connection = $null
 
 # https://blog.ironmansoftware.com/powershell-async-method/#:~:text=PowerShell%20does%20not%20provide%20an,when%20calling%20async%20methods%20in%20.
-
 function Wait-Task {
   param(
     [Parameter(Mandatory, ValueFromPipeline)]
