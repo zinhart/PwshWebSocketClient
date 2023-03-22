@@ -145,7 +145,7 @@ Function Receive-Message {
   $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
 
   $content = ""
-  $script:cancellation_token_src.cancelafter([TimeSpan]::Fromseconds($timeout))
+  $script:cancellation_token_src.cancelafter([TimeSpan]::Fromseconds($timeout)) # forces an error receive is called while there is no message
   do {
     while (-not $script:connection.IsCompleted) { 
       #write-host "here: $($script:websocket.state)"
