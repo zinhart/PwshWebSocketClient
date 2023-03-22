@@ -26,8 +26,14 @@ function Wait-Task {
   }
 
   End {
-    While (-not [System.Threading.Tasks.Task]::WaitAll($Tasks, $timeout)) {}
-    $Tasks.ForEach( { $_.GetAwaiter().GetResult() })
+    try {
+      While (-not [System.Threading.Tasks.Task]::WaitAll($Tasks, $timeout)) {}
+      $Tasks.ForEach( { $_.GetAwaiter().GetResult() })
+    }
+    catch {
+      Write-Host $_.Exception.Message -ForegroundColor Red
+      Write-Host "Stacktrace: " $_.ScriptStackTrace -ForegroundColor Red
+    }
   }
 }
 
@@ -72,13 +78,7 @@ Function Connect-Websocket {
   if( (Disconnect-Websocket) -eq $true ){
     $script:websocket = New-Object System.Net.WebSockets.ClientWebSocket
   }
-  # possible await here, gets rid of the need for a while loop.
   $script:connection = await $script:websocket.ConnectAsync($Endpoint, $script:cancellation_token)
-  <#
-  While (-not $script:connection.IsCompleted) {
-    Start-Sleep -Milliseconds 100
-  }
-  #>
   return (Test-Websocket)
 }
 
