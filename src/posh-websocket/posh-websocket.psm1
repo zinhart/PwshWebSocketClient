@@ -4,7 +4,8 @@
 $script:websocket = $null
 # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
 # with this method we can cancel receive after a period of time
-$script:cancellation_token = New-Object System.Threading.CancellationToken
+$script:cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
+$script:cancellation_token = $script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken
 $script:connection = $null
 
 # https://blog.ironmansoftware.com/powershell-async-method/#:~:text=PowerShell%20does%20not%20provide%20an,when%20calling%20async%20methods%20in%20.
@@ -136,7 +137,7 @@ Function Send-Message {
 Function Receive-Message {
   param(
     [Parameter(Mandatory=$false)]
-    [int]$timeout = 0,
+    [int]$timeout = 5,
     [Parameter(Mandatory=$false)]
     [int]$buffer_sz = 1024
   )
@@ -144,48 +145,16 @@ Function Receive-Message {
   $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
 
   $content = ""
+  $script:cancellation_token_src.cancelafter([TimeSpan]::Fromseconds($timeout))
   do {
-    $script:connection = await $script:websocket.ReceiveAsync($recv, $script:cancellation_token)
-    #while (-not $script:connection.IsCompleted) { Start-Sleep -Milliseconds 100 }
+    while (-not $script:connection.IsCompleted) { 
+      #write-host "here: $($script:websocket.state)"
+      #if ($script:websocket.state -eq 'Aborted') { break }
+      $script:connection =  $script:websocket.ReceiveAsync($recv, $script:cancellation_token)
+      #$script:connection | gm
+    }
     $recv.Array[0..($script:connection.Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
   } until ($script:connection.Result.Count -lt $buffer_sz)
-  <#
-  if ($timeout -le 0) { # stops only when message buffer is full
-    do {
-      $script:connection = await $script:websocket.ReceiveAsync($recv, $script:cancellation_token)
-      #while (-not $script:connection.IsCompleted) { Start-Sleep -Milliseconds 100 }
-      $recv.Array[0..($script:connection.Result.Count - 1)] |ForEach-Object { $content += [char]$_ }
-    } until ($script:connection.Result.Count -lt $buffer_sz)
-  }
-  else {# stops when message buffer is full OR X seconds have passed
-    do {
-      $script:connection = await $script:websocket.ReceiveAsync($recv, $script:cancellation_token)
-      #while (-not $script:connection.IsCompleted) { Start-Sleep -Milliseconds 100 }
-      $recv.Array[0..($script:connection.Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
-    } until (($script:connection.Result.Count -gt $buffer_sz) -or ($stop_watch.Elapsed -ge $time_span))
-    <#
-    $stop_watch = New-Object -TypeName System.Diagnostics.Stopwatch
-    $time_span = New-TimeSpan -Seconds $timeout
-    $stop_watch.Start()
-    while($true) {
-      $stop_watch.Elapsed.Milliseconds
-      if ($stop_watch.Elapsed.Milliseconds -ge $timeout) {
-        break;
-      }
-      
-      $script:connection = $script:websocket.ReceiveAsync($recv, $script:cancellation_token)
-      $recv.Array[0..($script:connection.Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
-    }
-    #>
-    <#
-    do {
-      $script:connection = $script:websocket.ReceiveAsync($recv, $script:cancellation_token)
-      while (-not $script:connection.IsCompleted) { Start-Sleep -Milliseconds 100 }
-      $recv.Array[0..($script:connection.Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
-    } until (($script:connection.Result.Count -gt $buffer_sz) -or ($stop_watch.Elapsed -ge $time_span))
-    #>
-  }
-  #>
   return $content
 }
 
