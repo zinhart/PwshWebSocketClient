@@ -1,4 +1,5 @@
 ##
+# multiple modules: https://stackoverflow.com/questions/44509704/creating-powershell-modules-from-multiple-files-referencing-with-module
 # PowerShell Module for a WebSocket connection. Meant to be commandline alternative to python's socket.io
 ##
 $script:websocket = $null
