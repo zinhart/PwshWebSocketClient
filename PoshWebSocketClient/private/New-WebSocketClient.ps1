@@ -28,14 +28,14 @@ function Wait-Task {
 }
 
 Set-Alias -Name await -Value Wait-Task -Force
-class websocket_client {
+class WebSocketClient {
   $websockets = $null
   # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
   # with this method we can cancel receive after a period of time
   $cancellation_token_srcs = $null;#New-Object System.Threading.CancellationTokenSource;
   $cancellation_tokens = $null;#(New-Object System.Collections.ArrayList);#$script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken
   $connections = $null
-  websocket_client() {
+  WebSocketClient() {
     $this.websockets = (New-Object System.Collections.ArrayList);
     $this.cancellation_token_srcs = (New-Object System.Collections.ArrayList);#New-Object System.Threading.CancellationTokenSource;
     $this.cancellation_tokens = (New-Object System.Collections.ArrayList);#$script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken
@@ -111,5 +111,5 @@ class websocket_client {
   }
 }
 Function New-WebSocketClient {
-  return [websocket_client]::new()
+  return [WebSocketClient]::new()
 }
