@@ -53,6 +53,20 @@ class websocket_client {
     $this.connections.add($conn); 
     return $this.websockets.Count - 1;
   }
+  [int]ConnectWebsocket([string] $uri, [int] $id) {
+    if ($id -lt $this.websockets.Count - 1) {
+      $ws = New-Object System.Net.WebSockets.ClientWebSocket
+      $cts = New-Object System.Threading.CancellationTokenSource;
+      $ct = $cts.Token;
+      $conn = await $ws.ConnectAsync($uri, $ct);
+      $this.websockets[$id] = $ws;
+      $this.cancellation_token_srcs[$id] = $cts;
+      $this.cancellation_token[$id] = $ct;
+      $this.connections[$id] = $conn; 
+      return $id
+    }
+    return -1;
+  }
   [bool]TestWebsocket([int] $id) {
     if ($id -lt $this.websockets.Count - 1) {
       return ($this.websockets[$id].State -eq 'Open')
@@ -69,11 +83,9 @@ class websocket_client {
     }
     return $false;
   }
-  [string]ReceiveMessage([string]$message, [int] $id) {
+  [string]ReceiveMessage([int] $id,  [int]$timeout, [int]$buffer_sz) {
     if ($id -lt $this.websockets.Count - 1) {
-      [int]$timeout = 5;
-      [int]$buffer_sz = 1024;
-      $buffer = [byte[]] @(,0) * $buffer_sz
+      $buffer = [byte[]] @(,1) * $buffer_sz
       $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
       $content = "";
       $this.cancellation_token_srcs[$id].cancelafter([TimeSpan]::Fromseconds($timeout)) # forces an error receive is called while there is no message
@@ -90,23 +102,14 @@ class websocket_client {
   [void] DisconnectWebsocket($id) {
     if ($id -lt $this.websockets.Count - 1) {
       $this.websockets[$id].Dispose()
-      # should probably also reset state
+      # reset state
+      $this.websockets[$id] =  $null
+      $this.cancellation_token_srcs[$id] = $null
+      $this.cancellation_tokens[$id] = $null
+      $this.connections[$id] = $null 
     }
   }
-  <#
-Function Connect-Websocket {
-  param(
-    [Parameter(Mandatory=$true)]
-    [string]
-    $Endpoint
-  )
-  
-  # make sure we are not starting too many clients
-  if( (Disconnect-Websocket) -eq $true ){
-    $script:websocket = New-Object System.Net.WebSockets.ClientWebSocket
-  }
-  $script:connection = await $script:websocket.ConnectAsync($Endpoint, $script:cancellation_token)
-  return (Test-Websocket)
 }
-#>
+Function New-WebSocketClient {
+  return [websocket_client]::new()
 }
