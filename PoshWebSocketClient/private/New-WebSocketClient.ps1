@@ -97,6 +97,11 @@ class WebSocketClient {
         }
         $recv.Array[0..($this.connections[$id].Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
       } until ($this.connections[$id].Result.Count -lt $buffer_sz)
+      # reset state for next send since cancelation tokens are single use.
+      $cts = New-Object System.Threading.CancellationTokenSource;
+      $ct = $cts.Token;
+      $this.cancellation_token_srcs[$id] = $cts;
+      $this.cancellation_tokens[$id] = $ct;
       return $content;
     }
     return '';
