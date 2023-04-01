@@ -53,7 +53,7 @@ class WebSocketClient {
     $this.connections.add($conn); 
     return $this.websockets.Count - 1;
   }
-  [int]ConnectWebsocket([string] $uri, [int] $id) {
+  [int]ConnectWebsocket([string] $uri, [int] $id = 0) {
     if ($id -lt $this.websockets.Count - 1) {
       $ws = New-Object System.Net.WebSockets.ClientWebSocket
       $cts = New-Object System.Threading.CancellationTokenSource;
@@ -67,13 +67,13 @@ class WebSocketClient {
     }
     return -1;
   }
-  [bool]TestWebsocket([int] $id) {
+  [bool]TestWebsocket([int] $id = 0) {
     if ($id -lt $this.websockets.Count - 1) {
       return ($this.websockets[$id].State -eq 'Open')
     }
     return $false;
   }
-  [bool]SendMessage([string]$message, [int] $id){
+  [bool]SendMessage([string]$message, [int] $id = 0){
     if ($id -lt $this.websockets.Count - 1) {
       $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message)
       $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream)
@@ -83,7 +83,7 @@ class WebSocketClient {
     }
     return $false;
   }
-  [string]ReceiveMessage([int] $id,  [int]$timeout, [int]$buffer_sz) {
+  [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
     if ($id -lt $this.websockets.Count - 1) {
       $buffer = [byte[]] @(,1) * $buffer_sz
       $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
@@ -99,7 +99,7 @@ class WebSocketClient {
     }
     return '';
   }
-  [void] DisconnectWebsocket($id) {
+  [void] DisconnectWebsocket($id = 0) {
     if ($id -lt $this.websockets.Count - 1) {
       $this.websockets[$id].Dispose()
       # reset state
