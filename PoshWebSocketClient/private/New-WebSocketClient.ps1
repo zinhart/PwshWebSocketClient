@@ -41,7 +41,7 @@ class WebSocketClient {
     $this.cancellation_tokens = (New-Object System.Collections.ArrayList);#$script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken
     $this.connections = (New-Object System.Collections.ArrayList);
   }
-
+  <#
   [int]ConnectWebsocket([string] $uri) {
     $ws = New-Object System.Net.WebSockets.ClientWebSocket
     $cts = New-Object System.Threading.CancellationTokenSource;
@@ -53,38 +53,40 @@ class WebSocketClient {
     $this.connections.add($conn); 
     return $this.websockets.Count - 1;
   }
-  [int]ConnectWebsocket([string] $uri, [int] $id = 0) {
-    if ($id -lt $this.websockets.Count - 1) {
-      $ws = New-Object System.Net.WebSockets.ClientWebSocket
-      $cts = New-Object System.Threading.CancellationTokenSource;
-      $ct = $cts.Token;
-      $conn = await $ws.ConnectAsync($uri, $ct);
-      $this.websockets[$id] = $ws;
-      $this.cancellation_token_srcs[$id] = $cts;
-      $this.cancellation_token[$id] = $ct;
-      $this.connections[$id] = $conn; 
-      return $id
-    }
+  #>
+  [int]ConnectWebsocket([string] $uri) {
+    $ws = New-Object System.Net.WebSockets.ClientWebSocket
+    $cts = New-Object System.Threading.CancellationTokenSource;
+    $ct = $cts.Token;
+    $conn = await $ws.ConnectAsync($uri, $ct);
+
+    $this.websockets.add($ws);
+    $this.cancellation_token_srcs.add($cts);
+    $this.cancellation_tokens.add($ct);
+    $this.connections.add($conn); 
+
+    $id = $this.websockets.Count - 1;
+    if($this.TestWebsocket($id)) { return $id }
     return -1;
   }
   [bool]TestWebsocket([int] $id = 0) {
-    if ($id -lt $this.websockets.Count - 1) {
+    if ($id -le $this.websockets.Count - 1) {
       return ($this.websockets[$id].State -eq 'Open')
     }
     return $false;
   }
   [bool]SendMessage([string]$message, [int] $id = 0){
-    if ($id -lt $this.websockets.Count - 1) {
+    if ($id -le $this.websockets.Count - 1) {
       $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message)
       $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream)
       # possibly await here
-      $send_connection = await $script:websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $script:cancellation_token)
+      $send_connection = await $this.websockets[$id].SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $this.cancellation_tokens[$id])
       return $send_connection.IsCompleted
     }
     return $false;
   }
   [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
-    if ($id -lt $this.websockets.Count - 1) {
+    if ($id -le $this.websockets.Count - 1) {
       $buffer = [byte[]] @(,1) * $buffer_sz
       $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
       $content = "";
@@ -100,7 +102,7 @@ class WebSocketClient {
     return '';
   }
   [void] DisconnectWebsocket($id = 0) {
-    if ($id -lt $this.websockets.Count - 1) {
+    if ($id -le $this.websockets.Count - 1) {
       $this.websockets[$id].Dispose()
       # reset state
       $this.websockets[$id] =  $null

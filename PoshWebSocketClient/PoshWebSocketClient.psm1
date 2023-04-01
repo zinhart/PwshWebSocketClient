@@ -21,12 +21,9 @@ $ws_client = New-WebSocketClient
 Function Connect-Websocket {
   Param (
     [Parameter(Mandatory=$true)]
-    [string]$Uri,
-    [Parameter(Mandatory=$false)]
-    [int]$id = 0
+    [string]$Uri
   )
-  if ($id -eq 0) { $ws_client.ConnectWebsocket($uri) }
-  else { $ws_client.ConnectWebsocket($uri, $id) }
+  $ws_client.ConnectWebsocket($uri)
 }
 
 Function Send-Message {
@@ -36,8 +33,7 @@ Function Send-Message {
     [Parameter(Mandatory=$false)]
     [int]$id = 0
   )
-  if ($id -eq 0) { $ws_client.SendMessage($uri) }
-  else { $ws_client.ReceiveMessage($uri, $id) }
+  $ws_client.SendMessage($message, $id)
 }
 
 Function Receive-Message {
@@ -63,6 +59,7 @@ Function Test-Websocket {
  param(
   [Parameter(Mandatory=$false)]
   [int]$id = 0
-  ) 
+  )
+  return $ws_client.TestWebsocket($id)
 }
 Export-ModuleMember Connect-Websocket,Test-Websocket,Disconnect-Websocket,Send-Message,Receive-Message
