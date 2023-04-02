@@ -4,6 +4,7 @@ from simple_websocket_server import WebSocketServer, WebSocket
 class SimpleEcho(WebSocket):
     def handle(self):
         # echo message back to client
+        print(F"Got message: {self.data}")
         self.send_message(self.data)
 
     def connected(self):

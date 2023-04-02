@@ -28,6 +28,14 @@ function Wait-Task {
 }
 
 Set-Alias -Name await -Value Wait-Task -Force
+
+# https://stackoverflow.com/questions/11981208/creating-and-throwing-new-exception
+class InvalidWebsocketIdException : Exception {
+  [string] $additionalData
+  InvalidWebsocketIdException($Message, $additionalData) : base($Message) {
+    $this.additionalData = $additionalData
+  }
+}
 class WebSocketClient {
   $websockets = $null
   # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
@@ -69,6 +77,34 @@ class WebSocketClient {
     if($this.TestWebsocket($id)) { return $id }
     return -1;
   }
+  [bool]ValidateId([int] $id) {
+    try {
+      if ($id -le $this.websockets.Count - 1){
+        return $true
+      }
+      else {
+        throw [InvalidWebsocketIdException]::new("$id >= $($this.websockets.Count - 1)","$($_.StackTrace)")
+      }
+    }
+    catch [InvalidWebsocketIdException] {
+      <#Do this if a terminating exception happens#>
+      Write-Output $_.Exception.additionalData
+      # This will produce the error message: Didn't catch it the second time
+      throw [InvalidWebsocketIdException]::new("Didn't catch it the second time", 'Extra data')
+    }
+    finally {
+      <#Do this after the try block regardless of whether an exception occurred or not#>
+      exit
+    }
+
+    return $false
+  }
+  [string]GetWebsocketState([int] $id = 0) {
+    if ($id -le $this.websockets.Count - 1) {
+      return $this.websockets[$id].State 
+    }   
+    return ''
+  }
   [bool]TestWebsocket([int] $id = 0) {
     if ($id -le $this.websockets.Count - 1) {
       return ($this.websockets[$id].State -eq 'Open')
@@ -90,7 +126,7 @@ class WebSocketClient {
       $buffer = [byte[]] @(,1) * $buffer_sz
       $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
       $content = "";
-      $this.cancellation_token_srcs[$id].cancelafter([TimeSpan]::Fromseconds($timeout)) # forces an error receive is called while there is no message
+      $this.cancellation_token_srcs[$id].cancelafter([TimeSpan]::Fromseconds($timeout)) # forces an error receive is called while there is no message. It's important to note that cancelation sets the websocket state to aborted
       do {
         while (-not $this.connections[$id].IsCompleted) { 
           $this.connections[$id] = $this.websockets[$id].ReceiveAsync($recv, $this.cancellation_tokens[$id])
