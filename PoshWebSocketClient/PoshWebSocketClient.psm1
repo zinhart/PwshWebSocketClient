@@ -54,7 +54,13 @@ Function Disconnect-Websocket {
     [int]$id = 0
   )
 }
-
+Function Get-WebsocketState {
+  param(
+    [Parameter(Mandatory=$false)]
+    [int]$id = 0
+  )
+  return $ws_client.GetWebsocketState($id)
+}
 Function Test-Websocket {
  param(
   [Parameter(Mandatory=$false)]
@@ -62,4 +68,4 @@ Function Test-Websocket {
   )
   return $ws_client.TestWebsocket($id)
 }
-Export-ModuleMember Connect-Websocket,Test-Websocket,Disconnect-Websocket,Send-Message,Receive-Message
+Export-ModuleMember Connect-Websocket,Test-Websocket,Disconnect-Websocket,Send-Message,Receive-Message, Get-WebsocketState

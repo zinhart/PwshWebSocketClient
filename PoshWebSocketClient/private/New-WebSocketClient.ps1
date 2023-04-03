@@ -36,50 +36,48 @@ class InvalidWebsocketIdException : Exception {
     $this.additionalData = $additionalData
   }
 }
+
+[PSCustomObject]@{
+      PsTypeName = 'wsstate'
+      Websockets     = $null
+      CancellationTokenSource = $null
+      CancellationToken    = $null
+  }
+
+class WebsocketClientConnection {
+  $websocket = $null
+  $cancellation_token_src = $null;
+  $connection = $null
+  WebSocketClientConnection([string] $uri) {
+    $this.websocket = New-Object System.Net.WebSockets.ClientWebSocket;
+    # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
+    $this.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
+    $this.connection = await $this.websocket.ConnectAsync($uri, $this.cancellation_token_src.Token);
+  }
+  static [bool] isOpen([WebSocketClientConnection] $conn) { return ($conn.websocket.State -eq 'Open') }
+  static [string] getState([WebSocketClientConnection] $conn) { return $conn.websocket.State }
+  static [bool] sendMessage([WebSocketClientConnection] $conn, [string] $message) {
+    write-host 'here 2'
+    $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message);
+    $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream);
+    $send_connection = await $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
+    return $send_connection.IsCompleted;
+  }
+}
 class WebSocketClient {
+
   $websockets = $null
-  # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
+
   # with this method we can cancel receive after a period of time
   $cancellation_token_srcs = $null;#New-Object System.Threading.CancellationTokenSource;
-  $cancellation_tokens = $null;#(New-Object System.Collections.ArrayList);#$script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken
-  $connections = $null
+  $cancellation_tokens = $null;#(New-Object System.Collections.ArrayList);#$script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken  $connections = $null
   WebSocketClient() {
     $this.websockets = (New-Object System.Collections.ArrayList);
-    $this.cancellation_token_srcs = (New-Object System.Collections.ArrayList);#New-Object System.Threading.CancellationTokenSource;
-    $this.cancellation_tokens = (New-Object System.Collections.ArrayList);#$script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken
-    $this.connections = (New-Object System.Collections.ArrayList);
-  }
-  <#
-  [int]ConnectWebsocket([string] $uri) {
-    $ws = New-Object System.Net.WebSockets.ClientWebSocket
-    $cts = New-Object System.Threading.CancellationTokenSource;
-    $ct = $cts.Token;
-    $conn = await $ws.ConnectAsync($uri, $ct);
-    $this.websockets.add($ws);
-    $this.cancellation_token_srcs.add($cts);
-    $this.cancellation_tokens.add($ct);
-    $this.connections.add($conn); 
-    return $this.websockets.Count - 1;
-  }
-  #>
-  [int]ConnectWebsocket([string] $uri) {
-    $ws = New-Object System.Net.WebSockets.ClientWebSocket
-    $cts = New-Object System.Threading.CancellationTokenSource;
-    $ct = $cts.Token;
-    $conn = await $ws.ConnectAsync($uri, $ct);
-
-    $this.websockets.add($ws);
-    $this.cancellation_token_srcs.add($cts);
-    $this.cancellation_tokens.add($ct);
-    $this.connections.add($conn); 
-
-    $id = $this.websockets.Count - 1;
-    if($this.TestWebsocket($id)) { return $id }
-    return -1;
   }
   [bool]ValidateId([int] $id) {
     try {
       if ($id -le $this.websockets.Count - 1){
+        Write-Host "here"
         return $true
       }
       else {
@@ -91,34 +89,41 @@ class WebSocketClient {
       Write-Output $_.Exception.additionalData
       # This will produce the error message: Didn't catch it the second time
       throw [InvalidWebsocketIdException]::new("Didn't catch it the second time", 'Extra data')
+      return $false
     }
-    finally {
-      <#Do this after the try block regardless of whether an exception occurred or not#>
-      exit
-    }
-
-    return $false
   }
+  [int]ConnectWebsocket([string] $uri) {
+    $websocket_connection = [WebSocketClientConnection]::new($uri)
+    if([WebSocketClientConnection]::isOpen($websocket_connection)) {
+      $this.websockets.add($websocket_connection)
+      $id = $this.websockets.Count - 1;
+      return $id
+    }
+    return -1;
+  }
+
   [string]GetWebsocketState([int] $id = 0) {
-    if ($id -le $this.websockets.Count - 1) {
-      return $this.websockets[$id].State 
-    }   
+    if ($this.ValidateId($id)) {return [WebSocketClientConnection]::getState($this.websockets[$id]) }
     return ''
   }
   [bool]TestWebsocket([int] $id = 0) {
-    if ($id -le $this.websockets.Count - 1) {
-      return ($this.websockets[$id].State -eq 'Open')
-    }
+    if ($this.ValidateId($id)) { return [WebSocketClientConnection]::isOpen($this.websockets[$id]) }
     return $false;
   }
   [bool]SendMessage([string]$message, [int] $id = 0){
-    if ($id -le $this.websockets.Count - 1) {
+    if ($this.ValidateId($id)) {
+    #if ($id -le $this.websockets.Count - 1) {
+      <#
       $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message)
       $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream)
       # possibly await here
       $send_connection = await $this.websockets[$id].SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $this.cancellation_tokens[$id])
       return $send_connection.IsCompleted
+      #>
+      Write-host here3
+      return [WebSocketClientConnection]::sendMessage($this.websockets[$id], $message);
     }
+      Write-host here4
     return $false;
   }
   [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
