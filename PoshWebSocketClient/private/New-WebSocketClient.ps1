@@ -1,4 +1,4 @@
-# https://blog.ironmansoftware.com/powershell-async-method/#:~:text=PowerShell%20does%20not%20provide%20an,when%20calling%20async%20methods%20in%20.
+# Synctactic sugar see: https://blog.ironmansoftware.com/powershell-async-method/#:~:text=PowerShell%20does%20not%20provide%20an,when%20calling%20async%20methods%20in%20.
 function Wait-Task {
   param(
     [Parameter(Mandatory, ValueFromPipeline)]
@@ -37,13 +37,6 @@ class InvalidWebsocketIdException : Exception {
   }
 }
 
-[PSCustomObject]@{
-      PsTypeName = 'wsstate'
-      Websockets     = $null
-      CancellationTokenSource = $null
-      CancellationToken    = $null
-  }
-
 class WebsocketClientConnection {
   $websocket = $null
   $cancellation_token_src = $null;
@@ -56,12 +49,18 @@ class WebsocketClientConnection {
   }
   static [bool] isOpen([WebSocketClientConnection] $conn) { return ($conn.websocket.State -eq 'Open') }
   static [string] getState([WebSocketClientConnection] $conn) { return $conn.websocket.State }
-  static [bool] sendMessage([WebSocketClientConnection] $conn, [string] $message) {
+  static [System.Threading.Tasks.Task] sendMessage([WebSocketClientConnection] $conn, [string] $message) {
     write-host 'here 2'
     $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message);
     $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream);
-    $send_connection = await $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
+    return $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
+    <#$send_connection = await $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
+    write-host "$send_connection"
     return $send_connection.IsCompleted;
+    #>
+  }
+  static [string] receiveMessage() {
+    return ''
   }
 }
 class WebSocketClient {
@@ -111,19 +110,7 @@ class WebSocketClient {
     return $false;
   }
   [bool]SendMessage([string]$message, [int] $id = 0){
-    if ($this.ValidateId($id)) {
-    #if ($id -le $this.websockets.Count - 1) {
-      <#
-      $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message)
-      $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream)
-      # possibly await here
-      $send_connection = await $this.websockets[$id].SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $this.cancellation_tokens[$id])
-      return $send_connection.IsCompleted
-      #>
-      Write-host here3
-      return [WebSocketClientConnection]::sendMessage($this.websockets[$id], $message);
-    }
-      Write-host here4
+    if ($this.ValidateId($id)) { return (await ([WebSocketClientConnection]::sendMessage($this.websockets[$id], $message))); }
     return $false;
   }
   [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
