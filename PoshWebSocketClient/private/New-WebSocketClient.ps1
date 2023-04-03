@@ -59,8 +59,20 @@ class WebsocketClientConnection {
     return $send_connection.IsCompleted;
     #>
   }
-  static [string] receiveMessage() {
-    return ''
+  static [string] receiveMessage([WebSocketClientConnection] $conn, [int]$timeout, [int]$buffer_sz) {
+    $buffer = [byte[]] @(,1) * $buffer_sz
+    $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
+    $content = "";
+    # forces an error receive is called while there is no message. It's important to note that cancelation sets the websocket state to aborted
+    $conn.cancellation_token_src.cancelafter([TimeSpan]::Fromseconds($timeout)) 
+    do {
+      while (-not $conn.connection.IsCompleted) { 
+        $conn.connection = $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token)
+        #$conn.connection = await ($conn.websockets.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
+      }
+      $recv.Array[0..($conn.connection.Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
+    } until ($conn.connection.Result.Count -lt $buffer_sz)
+    return $content
   }
 }
 class WebSocketClient {
@@ -114,6 +126,12 @@ class WebSocketClient {
     return $false;
   }
   [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
+    if ($this.ValidateId($id)) {
+      #return (await ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz)))
+      return ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz))
+    }
+    return ''
+    <#
     if ($id -le $this.websockets.Count - 1) {
       $buffer = [byte[]] @(,1) * $buffer_sz
       $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
@@ -133,6 +151,7 @@ class WebSocketClient {
       return $content;
     }
     return '';
+    #>
   }
   [void] DisconnectWebsocket($id = 0) {
     if ($id -le $this.websockets.Count - 1) {
