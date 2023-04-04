@@ -42,10 +42,15 @@ class WebsocketClientConnection {
   $cancellation_token_src = $null;
   $connection = $null
   WebSocketClientConnection([string] $uri) {
-    $this.websocket = New-Object System.Net.WebSockets.ClientWebSocket;
+    [WebSocketClientConnection]::reset($this, $uri)
+  }
+  static [void] cleanup([WebSocketClientConnection] $conn) { if ($null -ne $conn.websocket) {$conn.websocket.Dispose()} }
+  static [void] reset([WebSocketClientConnection] $conn, [string] $uri) {
+    [WebsocketClientConnection]::cleanup($conn)
+    $conn.websocket = New-Object System.Net.WebSockets.ClientWebSocket;
     # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
-    $this.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
-    $this.connection = await $this.websocket.ConnectAsync($uri, $this.cancellation_token_src.Token);
+    $conn.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
+    $conn.connection = await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token);
   }
   static [bool] isOpen([WebSocketClientConnection] $conn) { return ($conn.websocket.State -eq 'Open') }
   static [string] getState([WebSocketClientConnection] $conn) { return $conn.websocket.State }
@@ -92,13 +97,17 @@ class WebsocketClientConnection {
     return $content
   }
 }
+
+[PSCustomObject]@{
+  PSTypeName = "WebSocketClientStatus"
+  First = $First
+  Last = $Last
+  Phone = $Phone
+}
 class WebSocketClient {
 
   $websockets = $null
 
-  # with this method we can cancel receive after a period of time
-  $cancellation_token_srcs = $null;#New-Object System.Threading.CancellationTokenSource;
-  $cancellation_tokens = $null;#(New-Object System.Collections.ArrayList);#$script:cancellation_token_src.Token;#New-Object System.Threading.CancellationToken  $connections = $null
   WebSocketClient() {
     $this.websockets = (New-Object System.Collections.ArrayList);
   }
@@ -141,6 +150,14 @@ class WebSocketClient {
     if ($this.ValidateId($id)) { return (await ([WebSocketClientConnection]::sendMessage($this.websockets[$id], $message))); }
     return $false;
   }
+  [string]ReceiveMessage([int] $id = 0, [int]$buffer_sz) {
+    if ($this.ValidateId($id)) {
+      #return (await ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz)))
+      return ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $buffer_sz))
+    }
+    return ''
+  }
+  <#
   [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
     if ($this.ValidateId($id)) {
       #return (await ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz)))
@@ -148,9 +165,11 @@ class WebSocketClient {
     }
     return ''
   }
+  #>
   [void] DisconnectWebsocket($id = 0) {
-    if ($id -le $this.websockets.Count - 1) {
-      $this.websockets[$id].Dispose()
+    if ($this.ValidateId($id)) {
+    #if ($id -le $this.websockets.Count - 1) {
+      $this.websockets[$id].websocket.Dispose()
       # reset state
       $this.websockets[$id] =  $null
       $this.cancellation_token_srcs[$id] = $null

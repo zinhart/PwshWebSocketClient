@@ -45,7 +45,7 @@ Function Receive-Message {
     [Parameter(Mandatory=$false)]
     [int]$id = 0
   )
-  return $ws_client.ReceiveMessage($id, $Timeout, $buffer_sz)
+  return $ws_client.ReceiveMessage($id, $buffer_sz)
 }
 
 Function Disconnect-Websocket {
