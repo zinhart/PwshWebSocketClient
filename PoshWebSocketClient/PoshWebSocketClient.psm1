@@ -23,7 +23,7 @@ Function Connect-Websocket {
     [Parameter(Mandatory=$true)]
     [string]$Uri
   )
-  $ws_client.ConnectWebsocket($uri)
+  return $ws_client.ConnectWebsocket($uri)
 }
 
 Function Send-Message {

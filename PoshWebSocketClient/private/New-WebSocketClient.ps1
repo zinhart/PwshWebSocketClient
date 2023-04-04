@@ -37,6 +37,24 @@ class InvalidWebsocketIdException : Exception {
   }
 }
 
+class WebSocketClientConnectStatus
+{
+  [ValidateRange(-1, [int]::MaxValue)][string]$Id
+  [ValidateNotNullOrEmpty()][string]$Uri
+  [ValidateNotNullOrEmpty()][string]$Status
+}
+class WebSocketClientSendMsgStatus
+{
+  [ValidateRange(-1, [int]::MaxValue)][int]$Od
+  [ValidateNotNullOrEmpty()][string]$Uri
+}
+class WebSocketClientRecvMsgStatus
+{
+  [ValidateRange(-1, [int]::MaxValue)][int]$Id
+  [ValidateNotNullOrEmpty()][string]$Uri
+  [ValidateNotNullOrEmpty()][string]$Msg
+}
+
 class WebsocketClientConnection {
   $websocket = $null
   $cancellation_token_src = $null;
@@ -67,7 +85,6 @@ class WebsocketClientConnection {
       [System.Net.WebSockets.WebSocketReceiveResult] $res = (await $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
       $recv.Array[0..($res.Count - 1)] | ForEach-Object { $content += [char]$_ }
       if($res.EndOfMessage) {
-        Write-Host " $([System.Net.WebSockets.WebSocketMessageType]::Close)"
         break;
       }
       elseif ($res.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
@@ -98,12 +115,6 @@ class WebsocketClientConnection {
   }
 }
 
-[PSCustomObject]@{
-  PSTypeName = "WebSocketClientStatus"
-  First = $First
-  Last = $Last
-  Phone = $Phone
-}
 class WebSocketClient {
 
   $websockets = $null
@@ -128,14 +139,20 @@ class WebSocketClient {
       return $false
     }
   }
-  [int]ConnectWebsocket([string] $uri) {
+  [WebSocketClientConnectStatus]ConnectWebsocket([string] $uri) {
+    $ret = [WebSocketClientConnectStatus]@{
+      Id = -1
+      Uri = $uri
+      Status = 'Disconnected'
+    }
     $websocket_connection = [WebSocketClientConnection]::new($uri)
     if([WebSocketClientConnection]::isOpen($websocket_connection)) {
       $this.websockets.add($websocket_connection)
-      $id = $this.websockets.Count - 1;
-      return $id
+      $ret.Uri = $uri
+      $ret.Id = $this.websockets.Count - 1
+      $ret.Status = "Connected"
     }
-    return -1;
+    return $ret
   }
 
   [string]GetWebsocketState([int] $id = 0) {
@@ -177,6 +194,7 @@ class WebSocketClient {
       $this.connections[$id] = $null 
     }
   }
+
 }
 Function New-WebSocketClient {
   return [WebSocketClient]::new()
