@@ -45,13 +45,13 @@ class WebSocketClientConnectStatus
 }
 class WebSocketClientSendMsgStatus
 {
-  [ValidateRange(-1, [int]::MaxValue)][int]$Od
-  [ValidateNotNullOrEmpty()][string]$Uri
+  [ValidateRange(-1, [int]::MaxValue)][int]$id
+  [ValidateNotNullOrEmpty()][string]$Status
 }
 class WebSocketClientRecvMsgStatus
 {
   [ValidateRange(-1, [int]::MaxValue)][int]$Id
-  [ValidateNotNullOrEmpty()][string]$Uri
+  [ValidateNotNullOrEmpty()][string]$Status
   [ValidateNotNullOrEmpty()][string]$Msg
 }
 
@@ -163,16 +163,31 @@ class WebSocketClient {
     if ($this.ValidateId($id)) { return [WebSocketClientConnection]::isOpen($this.websockets[$id]) }
     return $false;
   }
-  [bool]SendMessage([string]$message, [int] $id = 0){
-    if ($this.ValidateId($id)) { return (await ([WebSocketClientConnection]::sendMessage($this.websockets[$id], $message))); }
-    return $false;
-  }
-  [string]ReceiveMessage([int] $id = 0, [int]$buffer_sz) {
-    if ($this.ValidateId($id)) {
-      #return (await ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz)))
-      return ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $buffer_sz))
+  [WebSocketClientSendMsgStatus]SendMessage([string]$message, [int] $id = 0){
+    $ret = [WebSocketClientSendMsgStatus]@{
+      Id = -1
+      Status = 'Failure'
     }
-    return ''
+    if ($this.ValidateId($id)) {
+      if (await ([WebSocketClientConnection]::sendMessage($this.websockets[$id], $message))) {
+        $ret.Id = $id
+        $ret.Status = 'Success'
+      }
+    }
+    return $ret
+  }
+  [WebSocketClientRecvMsgStatus]ReceiveMessage([int] $id = 0, [int]$buffer_sz) {
+    $ret = [WebSocketClientRecvMsgStatus]@{
+      Id = -1
+      Status = 'Failure'
+      Msg =  'Invalid'
+    }
+    if ($this.ValidateId($id)) {
+      $ret.Id = $id
+      $ret.Status = 'Success'
+      $ret.Msg = [WebSocketClientConnection]::receiveMessage($this.websockets[$id], $buffer_sz)
+    }
+    return $ret
   }
   <#
   [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
