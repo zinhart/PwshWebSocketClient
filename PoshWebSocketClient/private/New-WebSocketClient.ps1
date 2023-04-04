@@ -50,28 +50,45 @@ class WebsocketClientConnection {
   static [bool] isOpen([WebSocketClientConnection] $conn) { return ($conn.websocket.State -eq 'Open') }
   static [string] getState([WebSocketClientConnection] $conn) { return $conn.websocket.State }
   static [System.Threading.Tasks.Task] sendMessage([WebSocketClientConnection] $conn, [string] $message) {
-    write-host 'here 2'
     $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message);
     $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream);
     return $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
-    <#$send_connection = await $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
-    write-host "$send_connection"
-    return $send_connection.IsCompleted;
-    #>
   }
+  static [string] receiveMessage([WebSocketClientConnection] $conn, [int]$buffer_sz) {
+    $buffer = [byte[]] @(,1) * $buffer_sz
+    $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
+    $content = "";
+    while ($conn.websocket.State -eq 'Open') {
+      [System.Net.WebSockets.WebSocketReceiveResult] $res = (await $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
+      $recv.Array[0..($res.Count - 1)] | ForEach-Object { $content += [char]$_ }
+      if($res.EndOfMessage) {
+        Write-Host " $([System.Net.WebSockets.WebSocketMessageType]::Close)"
+        break;
+      }
+      elseif ($res.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
+        await $conn.websocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, [string]::Empty, $conn.cancellation_token_src.Token);
+      }
+    }
+    return $content
+  }
+  # using a timeout in this way invalidates the entire websocket and introduces alot of cleanup so it's of limited value to use it right now. This overload of receiveMessage is here incase I find a usecase later.
   static [string] receiveMessage([WebSocketClientConnection] $conn, [int]$timeout, [int]$buffer_sz) {
     $buffer = [byte[]] @(,1) * $buffer_sz
     $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
     $content = "";
-    # forces an error receive is called while there is no message. It's important to note that cancelation sets the websocket state to aborted
+    #forces an error receive is called while there is no message. It's important to note that cancelation sets the websocket state to aborted
     $conn.cancellation_token_src.cancelafter([TimeSpan]::Fromseconds($timeout)) 
-    do {
-      while (-not $conn.connection.IsCompleted) { 
-        $conn.connection = $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token)
-        #$conn.connection = await ($conn.websockets.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
+    while ($conn.websocket.State -eq 'Open') {
+      [System.Net.WebSockets.WebSocketReceiveResult] $res = (await $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
+      $recv.Array[0..($res.Count - 1)] | ForEach-Object { $content += [char]$_ }
+      if($res.EndOfMessage) {
+        Write-Host " $([System.Net.WebSockets.WebSocketMessageType]::Close)"
+        break;
       }
-      $recv.Array[0..($conn.connection.Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
-    } until ($conn.connection.Result.Count -lt $buffer_sz)
+      elseif ($res.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
+        await $conn.websocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, [string]::Empty, $conn.cancellation_token_src.Token);
+      }
+    }
     return $content
   }
 }
@@ -88,7 +105,6 @@ class WebSocketClient {
   [bool]ValidateId([int] $id) {
     try {
       if ($id -le $this.websockets.Count - 1){
-        Write-Host "here"
         return $true
       }
       else {
@@ -131,27 +147,6 @@ class WebSocketClient {
       return ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz))
     }
     return ''
-    <#
-    if ($id -le $this.websockets.Count - 1) {
-      $buffer = [byte[]] @(,1) * $buffer_sz
-      $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
-      $content = "";
-      $this.cancellation_token_srcs[$id].cancelafter([TimeSpan]::Fromseconds($timeout)) # forces an error receive is called while there is no message. It's important to note that cancelation sets the websocket state to aborted
-      do {
-        while (-not $this.connections[$id].IsCompleted) { 
-          $this.connections[$id] = $this.websockets[$id].ReceiveAsync($recv, $this.cancellation_tokens[$id])
-        }
-        $recv.Array[0..($this.connections[$id].Result.Count - 1)] | ForEach-Object { $content += [char]$_ }
-      } until ($this.connections[$id].Result.Count -lt $buffer_sz)
-      # reset state for next send since cancelation tokens are single use.
-      $cts = New-Object System.Threading.CancellationTokenSource;
-      $ct = $cts.Token;
-      $this.cancellation_token_srcs[$id] = $cts;
-      $this.cancellation_tokens[$id] = $ct;
-      return $content;
-    }
-    return '';
-    #>
   }
   [void] DisconnectWebsocket($id = 0) {
     if ($id -le $this.websockets.Count - 1) {

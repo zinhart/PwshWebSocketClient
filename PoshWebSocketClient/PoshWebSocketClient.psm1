@@ -39,13 +39,13 @@ Function Send-Message {
 Function Receive-Message {
   param(
     [Parameter(Mandatory=$false)]
-    [int]$timeout = 5,
+    [int]$Timeout = 10000, # milliseconds
     [Parameter(Mandatory=$false)]
     [int]$buffer_sz = 1024,
     [Parameter(Mandatory=$false)]
     [int]$id = 0
   )
-  return $ws_client.ReceiveMessage($id, $timeout, $buffer_sz)
+  return $ws_client.ReceiveMessage($id, $Timeout, $buffer_sz)
 }
 
 Function Disconnect-Websocket {
