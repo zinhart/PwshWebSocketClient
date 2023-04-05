@@ -30,9 +30,9 @@ function Wait-Task {
 Set-Alias -Name await -Value Wait-Task -Force
 
 # https://stackoverflow.com/questions/11981208/creating-and-throwing-new-exception
-class InvalidWebsocketIdException : Exception {
+class InvalidWebSocketIdException : Exception {
   [string] $additionalData
-  InvalidWebsocketIdException($Message, $additionalData) : base($Message) {
+  InvalidWebSocketIdException($Message, $additionalData) : base($Message) {
     $this.additionalData = $additionalData
   }
 }
@@ -45,7 +45,7 @@ class WebSocketClientConnectStatus
 }
 class WebSocketClientSendMsgStatus
 {
-  [ValidateRange(-1, [int]::MaxValue)][int]$id
+  [ValidateRange(-1, [int]::MaxValue)][int]$Id
   [ValidateNotNullOrEmpty()][string]$Status
 }
 class WebSocketClientRecvMsgStatus
@@ -53,6 +53,11 @@ class WebSocketClientRecvMsgStatus
   [ValidateRange(-1, [int]::MaxValue)][int]$Id
   [ValidateNotNullOrEmpty()][string]$Status
   [ValidateNotNullOrEmpty()][string]$Msg
+}
+
+class WebSocketClientState {
+  [ValidateRange(-1, [int]::MaxValue)][string]$Id 
+  [ValidateNotNullOrEmpty()][string]$State
 }
 
 class WebsocketClientConnection {
@@ -122,24 +127,24 @@ class WebSocketClient {
   WebSocketClient() {
     $this.websockets = (New-Object System.Collections.ArrayList);
   }
-  [bool]ValidateId([int] $id) {
+  [bool] ValidateId([int] $id) {
     try {
       if ($id -le $this.websockets.Count - 1){
         return $true
       }
       else {
-        throw [InvalidWebsocketIdException]::new("$id >= $($this.websockets.Count - 1)","$($_.StackTrace)")
+        throw [InvalidWebSocketIdException]::new("$id >= $($this.websockets.Count - 1)","$($_.StackTrace)")
       }
     }
-    catch [InvalidWebsocketIdException] {
+    catch [InvalidWebSocketIdException] {
       <#Do this if a terminating exception happens#>
       Write-Output $_.Exception.additionalData
       # This will produce the error message: Didn't catch it the second time
-      throw [InvalidWebsocketIdException]::new("Didn't catch it the second time", 'Extra data')
+      #throw [InvalidWebSocketIdException]::new("InvalidWebSocketIdException", "Invalid Id: $id")
       return $false
     }
   }
-  [WebSocketClientConnectStatus]ConnectWebsocket([string] $uri) {
+  [WebSocketClientConnectStatus] ConnectWebsocket([string] $uri) {
     $ret = [WebSocketClientConnectStatus]@{
       Id = -1
       Uri = $uri
@@ -155,15 +160,24 @@ class WebSocketClient {
     return $ret
   }
 
-  [string]GetWebsocketState([int] $id = 0) {
-    if ($this.ValidateId($id)) {return [WebSocketClientConnection]::getState($this.websockets[$id]) }
-    return ''
+  [WebSocketClientState] GetWebSocketState([int] $id = 0) {
+    $ret = [WebSocketClientState]@{
+      Id = -1
+      State = 'Invalid'
+    }
+    if ($this.ValidateId($id)) {
+      $ret.Id = $id
+      $ret.State = [WebSocketClientConnection]::getState($this.websockets[$id])
+    }
+    return $ret
   }
-  [bool]TestWebsocket([int] $id = 0) {
+<# #Kind of redundant with GetWebSocketState
+  [bool] TestWebsocket([int] $id = 0) {
     if ($this.ValidateId($id)) { return [WebSocketClientConnection]::isOpen($this.websockets[$id]) }
     return $false;
   }
-  [WebSocketClientSendMsgStatus]SendMessage([string]$message, [int] $id = 0){
+#>
+  [WebSocketClientSendMsgStatus] SendMessage([string]$message, [int] $id = 0){
     $ret = [WebSocketClientSendMsgStatus]@{
       Id = -1
       Status = 'Failure'
@@ -176,7 +190,7 @@ class WebSocketClient {
     }
     return $ret
   }
-  [WebSocketClientRecvMsgStatus]ReceiveMessage([int] $id = 0, [int]$buffer_sz) {
+  [WebSocketClientRecvMsgStatus] ReceiveMessage([int] $id = 0, [int]$buffer_sz) {
     $ret = [WebSocketClientRecvMsgStatus]@{
       Id = -1
       Status = 'Failure'

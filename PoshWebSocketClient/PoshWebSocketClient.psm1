@@ -31,9 +31,9 @@ Function Send-Message {
     [Parameter(Mandatory=$true)]
     [string]$message,
     [Parameter(Mandatory=$false)]
-    [int]$id = 0
+    [int]$Id = 0
   )
-  $ws_client.SendMessage($message, $id)
+  $ws_client.SendMessage($message, $Id)
 }
 
 Function Receive-Message {
@@ -43,29 +43,31 @@ Function Receive-Message {
     [Parameter(Mandatory=$false)]
     [int]$buffer_sz = 1024,
     [Parameter(Mandatory=$false)]
-    [int]$id = 0
+    [int]$Id = 0
   )
-  $ws_client.ReceiveMessage($id, $buffer_sz)
+  $ws_client.ReceiveMessage($Id, $buffer_sz)
 }
 
 Function Disconnect-Websocket {
   param(
     [Parameter(Mandatory=$false)]
-    [int]$id = 0
+    [int]$Id = 0
   )
 }
 Function Get-WebsocketState {
   param(
     [Parameter(Mandatory=$false)]
-    [int]$id = 0
+    [int]$Id = 0
   )
-  return $ws_client.GetWebsocketState($id)
+  return $ws_client.GetWebsocketState($Id)
 }
+<# Redundant with get-websocketstate
 Function Test-Websocket {
  param(
   [Parameter(Mandatory=$false)]
-  [int]$id = 0
+  [int]$Id = 0
   )
-  return $ws_client.TestWebsocket($id)
+  return $ws_client.TestWebsocket($Id)
 }
-Export-ModuleMember Connect-Websocket,Test-Websocket,Disconnect-Websocket,Send-Message,Receive-Message, Get-WebsocketState
+#>
+Export-ModuleMember Connect-Websocket,<#Test-Websocket,#>Disconnect-Websocket,Send-Message,Receive-Message, Get-WebsocketState
