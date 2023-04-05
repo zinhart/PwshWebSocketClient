@@ -1,0 +1,20 @@
+PSTOPIC
+  about_PoshWebSocketClient
+
+SHORT DESCRIPTION
+  PoshWebSocketClient allows you to interact with web apps over websockets through PowerShell.
+  
+LONG DESCRIPTION
+  PoshWebSocketClient allows you to interact with web apps over websockets through PowerShell.
+  
+  PoshWebSocketClient is cross platform and infact was written on a Kali Linux VM.
+
+DETAILED DESCRIPTION
+  PoshWebSocketClient allows you to interact with web apps over websockets through PowerShell. PoshWebSocketClient is cross platform and infact was written on a Kali Linux VM.
+  
+  This module is a hard and fast websocket client so it doesn't always follow the standard websocket practices.
+  
+  Rather than aiming to be a full fledged client, the purpose of the module is to provide
+  web application testers with a fast netcat like tool for interacting with websockets during blackbox/whitebox web application tests.
+
+  As a side this module was written while I was earning my OWSE from Offsec's AWAE course.
