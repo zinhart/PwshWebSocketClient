@@ -53,6 +53,7 @@ Function Disconnect-Websocket {
     [Parameter(Mandatory=$false)]
     [int]$Id = 0
   )
+  $ws_client.DisconnectWebsocket($Id)
 }
 Function Get-WebsocketState {
   param(

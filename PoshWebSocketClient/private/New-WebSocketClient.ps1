@@ -69,14 +69,36 @@ class WebsocketClientConnection {
   }
   static [void] cleanup([WebSocketClientConnection] $conn) { if ($null -ne $conn.websocket) {$conn.websocket.Dispose()} }
   static [void] reset([WebSocketClientConnection] $conn, [string] $uri) {
-    [WebsocketClientConnection]::cleanup($conn)
+    #[WebsocketClientConnection]::cleanup($conn)
+    if ($null -ne $conn.websocket) {
+      if ($conn.websocket.State -eq 'Open') { return }
+      else { $conn.websocket.Dispose() }
+    }
     $conn.websocket = New-Object System.Net.WebSockets.ClientWebSocket;
+    if ($null -ne $conn.cancellation_token_src) { $conn.cancellation_token_src.Dispose() }
     # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
     $conn.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
     $conn.connection = await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token);
   }
+  static [void] disconnect([WebSocketClientConnection] $conn) {
+    if ($null -eq $conn.websocket) { return }
+    if ($conn.websocket.State -eq 'Open') { 
+      $conn.cancellation_token_src.cancelafter([TimeSpan]::Fromseconds(2))
+      await $conn.websocket.CloseOutputAsync([System.Net.WebSockets.WebSocketCloseStatus]::Empty,"", [System.Threading.CancellationToken]::None)
+      await $conn.websocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, "", [System.Threading.CancellationToken]::None)
+    }
+    $conn.websocket.Dispose()
+    $conn.websocket = $null
+    $conn.cancellation_token_src.Dispose()
+    $conn.cancellation_token_src = $null
+  }
   static [bool] isOpen([WebSocketClientConnection] $conn) { return ($conn.websocket.State -eq 'Open') }
-  static [string] getState([WebSocketClientConnection] $conn) { return $conn.websocket.State }
+  static [string] getState([WebSocketClientConnection] $conn) { 
+    if ($null -eq $conn.websocket) { 
+      return 'Disconnected' 
+    }  
+    return $conn.websocket.State 
+  }
   static [System.Threading.Tasks.Task] sendMessage([WebSocketClientConnection] $conn, [string] $message) {
     $byte_stream = [system.Text.Encoding]::UTF8.GetBytes($message);
     $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream);
@@ -214,16 +236,9 @@ class WebSocketClient {
   #>
   [void] DisconnectWebsocket($id = 0) {
     if ($this.ValidateId($id)) {
-    #if ($id -le $this.websockets.Count - 1) {
-      $this.websockets[$id].websocket.Dispose()
-      # reset state
-      $this.websockets[$id] =  $null
-      $this.cancellation_token_srcs[$id] = $null
-      $this.cancellation_tokens[$id] = $null
-      $this.connections[$id] = $null 
+      [WebsocketClientConnection]::disconnect($this.websockets[$id])
     }
   }
-
 }
 Function New-WebSocketClient {
   return [WebSocketClient]::new()
