@@ -63,7 +63,6 @@ class WebSocketClientState {
 class WebsocketClientConnection {
   $websocket = $null
   $cancellation_token_src = $null;
-  $connection = $null
   WebSocketClientConnection([string] $uri) {
     [WebSocketClientConnection]::reset($this, $uri)
   }
@@ -78,7 +77,7 @@ class WebsocketClientConnection {
     if ($null -ne $conn.cancellation_token_src) { $conn.cancellation_token_src.Dispose() }
     # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
     $conn.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
-    $conn.connection = await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token);
+    await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token)
   }
   static [void] disconnect([WebSocketClientConnection] $conn) {
     if ($null -eq $conn.websocket) { return }
@@ -104,36 +103,18 @@ class WebsocketClientConnection {
     $message_stream = New-Object System.ArraySegment[byte] -ArgumentList @(,$byte_stream);
     return $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
   }
+  # food for thought: https://stackoverflow.com/questions/30523478/connecting-to-websocket-using-c-sharp-i-can-connect-using-javascript-but-c-sha
   static [string] receiveMessage([WebSocketClientConnection] $conn, [int]$buffer_sz) {
     $buffer = [byte[]] @(,1) * $buffer_sz
     $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
     $content = "";
-    while ($conn.websocket.State -eq 'Open') {
-      [System.Net.WebSockets.WebSocketReceiveResult] $res = (await $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
+    while (!$conn.cancellation_token_src.Token.IsCancellationRequested) {
+      [System.Net.WebSockets.WebSocketReceiveResult] $res = ( await $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
       $recv.Array[0..($res.Count - 1)] | ForEach-Object { $content += [char]$_ }
       if($res.EndOfMessage) {
         break;
       }
-      elseif ($res.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
-        await $conn.websocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, [string]::Empty, $conn.cancellation_token_src.Token);
-      }
-    }
-    return $content
-  }
-  # using a timeout in this way invalidates the entire websocket and introduces alot of cleanup so it's of limited value to use it right now. This overload of receiveMessage is here incase I find a usecase later.
-  static [string] receiveMessage([WebSocketClientConnection] $conn, [int]$timeout, [int]$buffer_sz) {
-    $buffer = [byte[]] @(,1) * $buffer_sz
-    $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
-    $content = "";
-    #forces an error receive is called while there is no message. It's important to note that cancelation sets the websocket state to aborted
-    $conn.cancellation_token_src.cancelafter([TimeSpan]::Fromseconds($timeout)) 
-    while ($conn.websocket.State -eq 'Open') {
-      [System.Net.WebSockets.WebSocketReceiveResult] $res = (await $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
-      $recv.Array[0..($res.Count - 1)] | ForEach-Object { $content += [char]$_ }
-      if($res.EndOfMessage) {
-        Write-Host " $([System.Net.WebSockets.WebSocketMessageType]::Close)"
-        break;
-      }
+      if ($conn.websocket.State -eq 'Closed') { }
       elseif ($res.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
         await $conn.websocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, [string]::Empty, $conn.cancellation_token_src.Token);
       }
@@ -181,7 +162,6 @@ class WebSocketClient {
     }
     return $ret
   }
-
   [WebSocketClientState] GetWebSocketState([int] $id = 0) {
     $ret = [WebSocketClientState]@{
       Id = -1
@@ -193,12 +173,6 @@ class WebSocketClient {
     }
     return $ret
   }
-<# #Kind of redundant with GetWebSocketState
-  [bool] TestWebsocket([int] $id = 0) {
-    if ($this.ValidateId($id)) { return [WebSocketClientConnection]::isOpen($this.websockets[$id]) }
-    return $false;
-  }
-#>
   [WebSocketClientSendMsgStatus] SendMessage([string]$message, [int] $id = 0){
     $ret = [WebSocketClientSendMsgStatus]@{
       Id = -1
@@ -225,15 +199,6 @@ class WebSocketClient {
     }
     return $ret
   }
-  <#
-  [string]ReceiveMessage([int] $id = 0,  [int]$timeout, [int]$buffer_sz) {
-    if ($this.ValidateId($id)) {
-      #return (await ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz)))
-      return ([WebSocketClientConnection]::receiveMessage($this.websockets[$id], $timeout, $buffer_sz))
-    }
-    return ''
-  }
-  #>
   [void] DisconnectWebsocket($id = 0) {
     if ($this.ValidateId($id)) {
       [WebsocketClientConnection]::disconnect($this.websockets[$id])
