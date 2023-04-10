@@ -109,13 +109,19 @@ class WebsocketClientConnection {
     $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
     $content = "";
     while (!$conn.cancellation_token_src.Token.IsCancellationRequested) {
+      if ($conn.websocket.State -eq 'Closed') { break }
+      <# Maybe allow for keyboard interrupts
+      if ([Console]::KeyAvailable) {
+        $key = [Console]::ReadKey($true)
+        if ($key.key -eq "C" -and $key.modifiers -eq "Control") { break }
+      }
+      #>
       [System.Net.WebSockets.WebSocketReceiveResult] $res = ( await $conn.websocket.ReceiveAsync($recv, $conn.cancellation_token_src.Token))
       $recv.Array[0..($res.Count - 1)] | ForEach-Object { $content += [char]$_ }
       if($res.EndOfMessage) {
         break;
       }
-      if ($conn.websocket.State -eq 'Closed') { }
-      elseif ($res.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
+      if ($res.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
         await $conn.websocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, [string]::Empty, $conn.cancellation_token_src.Token);
       }
     }
