@@ -39,24 +39,24 @@ class InvalidWebSocketIdException : Exception {
 
 class WebSocketClientConnectStatus
 {
-  [ValidateRange(-1, [int]::MaxValue)][string]$Id
+  [ValidateRange(-1, [int]::MaxValue)][string]$SocketId
   [ValidateNotNullOrEmpty()][string]$Uri
   [ValidateNotNullOrEmpty()][string]$Status
 }
 class WebSocketClientSendMsgStatus
 {
-  [ValidateRange(-1, [int]::MaxValue)][int]$Id
+  [ValidateRange(-1, [int]::MaxValue)][int]$SocketId
   [ValidateNotNullOrEmpty()][string]$Status
 }
 class WebSocketClientRecvMsgStatus
 {
-  [ValidateRange(-1, [int]::MaxValue)][int]$Id
+  [ValidateRange(-1, [int]::MaxValue)][int]$SocketId
   [ValidateNotNullOrEmpty()][string]$Status
   [ValidateNotNullOrEmpty()][string]$Msg
 }
 
 class WebSocketClientState {
-  [ValidateRange(-1, [int]::MaxValue)][string]$Id 
+  [ValidateRange(-1, [int]::MaxValue)][string]$SocketId 
   [ValidateNotNullOrEmpty()][string]$State
 }
 
@@ -136,13 +136,13 @@ class WebSocketClient {
   WebSocketClient() {
     $this.websockets = (New-Object System.Collections.ArrayList);
   }
-  [bool] ValidateId([int] $id) {
+  [bool] ValidateSocketId([int] $SocketId) {
     try {
-      if ($id -le $this.websockets.Count - 1){
+      if ($SocketId -le $this.websockets.Count - 1){
         return $true
       }
       else {
-        throw [InvalidWebSocketIdException]::new("$id >= $($this.websockets.Count - 1)","$($_.StackTrace)")
+        throw [InvalidWebSocketIdException]::new("$SocketId >= $($this.websockets.Count - 1)","$($_.StackTrace)")
       }
     }
     catch [InvalidWebSocketIdException] {
@@ -155,7 +155,7 @@ class WebSocketClient {
   }
   [WebSocketClientConnectStatus] ConnectWebsocket([string] $uri) {
     $ret = [WebSocketClientConnectStatus]@{
-      Id = -1
+      SocketId = -1
       Uri = $uri
       Status = 'Disconnected'
     }
@@ -163,51 +163,51 @@ class WebSocketClient {
     if([WebSocketClientConnection]::isOpen($websocket_connection)) {
       $this.websockets.add($websocket_connection)
       $ret.Uri = $uri
-      $ret.Id = $this.websockets.Count - 1
+      $ret.SocketId = $this.websockets.Count - 1
       $ret.Status = "Connected"
     }
     return $ret
   }
-  [WebSocketClientState] GetWebSocketState([int] $id = 0) {
+  [WebSocketClientState] GetWebSocketState([int] $SocketId = 0) {
     $ret = [WebSocketClientState]@{
-      Id = -1
+      SocketId = -1
       State = 'Invalid'
     }
-    if ($this.ValidateId($id)) {
-      $ret.Id = $id
-      $ret.State = [WebSocketClientConnection]::getState($this.websockets[$id])
+    if ($this.ValidateSocketId($SocketId)) {
+      $ret.SocketId = $SocketId
+      $ret.State = [WebSocketClientConnection]::getState($this.websockets[$SocketId])
     }
     return $ret
   }
-  [WebSocketClientSendMsgStatus] SendMessage([string]$message, [int] $id = 0){
+  [WebSocketClientSendMsgStatus] SendMessage([string]$message, [int] $SocketId = 0){
     $ret = [WebSocketClientSendMsgStatus]@{
-      Id = -1
+      SocketId = -1
       Status = 'Failure'
     }
-    if ($this.ValidateId($id)) {
-      if (await ([WebSocketClientConnection]::sendMessage($this.websockets[$id], $message))) {
-        $ret.Id = $id
+    if ($this.ValidateSocketId($SocketId)) {
+      if (await ([WebSocketClientConnection]::sendMessage($this.websockets[$SocketId], $message))) {
+        $ret.SocketId = $SocketId
         $ret.Status = 'Success'
       }
     }
     return $ret
   }
-  [WebSocketClientRecvMsgStatus] ReceiveMessage([int] $id = 0, [int]$buffer_sz) {
+  [WebSocketClientRecvMsgStatus] ReceiveMessage([int] $SocketId = 0, [int]$buffer_sz) {
     $ret = [WebSocketClientRecvMsgStatus]@{
-      Id = -1
+      SocketId = -1
       Status = 'Failure'
       Msg =  'Invalid'
     }
-    if ($this.ValidateId($id)) {
-      $ret.Id = $id
+    if ($this.ValidateSocketId($SocketId)) {
+      $ret.SocketId = $SocketId
       $ret.Status = 'Success'
-      $ret.Msg = [WebSocketClientConnection]::receiveMessage($this.websockets[$id], $buffer_sz)
+      $ret.Msg = [WebSocketClientConnection]::receiveMessage($this.websockets[$SocketId], $buffer_sz)
     }
     return $ret
   }
-  [void] DisconnectWebsocket($id = 0) {
-    if ($this.ValidateId($id)) {
-      [WebsocketClientConnection]::disconnect($this.websockets[$id])
+  [void] DisconnectWebsocket($SocketId = 0) {
+    if ($this.ValidateSocketId($SocketId)) {
+      [WebsocketClientConnection]::disconnect($this.websockets[$SocketId])
     }
   }
 }
