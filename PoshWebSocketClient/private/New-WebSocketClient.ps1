@@ -135,6 +135,7 @@ class WebSocketClient {
 
   WebSocketClient() {
     $this.websockets = (New-Object System.Collections.ArrayList);
+    $this.recvJobs = (New-Object System.Collections.ArrayList);
   }
   [bool] ValidateSocketId([int] $SocketId) {
     try {
