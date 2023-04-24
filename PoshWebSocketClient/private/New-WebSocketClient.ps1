@@ -104,8 +104,8 @@ class WebsocketClientConnection {
     return $conn.websocket.SendAsync($message_stream, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $conn.cancellation_token_src.Token);
   }
   # food for thought: https://stackoverflow.com/questions/30523478/connecting-to-websocket-using-c-sharp-i-can-connect-using-javascript-but-c-sha
-  static [string] receiveMessage([WebSocketClientConnection] $conn, [int]$buffer_sz) {
-    $buffer = [byte[]] @(,1) * $buffer_sz
+  static [string] receiveMessage([WebSocketClientConnection] $conn, [int]$BufferSize) {
+    $buffer = [byte[]] @(,1) * $BufferSize
     $recv = New-Object System.ArraySegment[byte] -ArgumentList @(,$buffer)
     $content = "";
     while (!$conn.cancellation_token_src.Token.IsCancellationRequested) {
@@ -133,10 +133,7 @@ class WebSocketClient {
 
   $websockets = $null
 
-  WebSocketClient() {
-    $this.websockets = (New-Object System.Collections.ArrayList);
-    $this.recvJobs = (New-Object System.Collections.ArrayList);
-  }
+  WebSocketClient() { $this.websockets = (New-Object System.Collections.ArrayList); }
   [bool] ValidateSocketId([int] $SocketId) {
     try {
       if ($SocketId -le $this.websockets.Count - 1){
@@ -193,7 +190,7 @@ class WebSocketClient {
     }
     return $ret
   }
-  [WebSocketClientRecvMsgStatus] ReceiveMessage([int] $SocketId = 0, [int]$buffer_sz) {
+  [WebSocketClientRecvMsgStatus] ReceiveMessage([int] $SocketId = 0, [int]$BufferSize) {
     $ret = [WebSocketClientRecvMsgStatus]@{
       SocketId = -1
       Status = 'Failure'
@@ -202,7 +199,7 @@ class WebSocketClient {
     if ($this.ValidateSocketId($SocketId)) {
       $ret.SocketId = $SocketId
       $ret.Status = 'Success'
-      $ret.Msg = [WebSocketClientConnection]::receiveMessage($this.websockets[$SocketId], $buffer_sz)
+      $ret.Msg = [WebSocketClientConnection]::receiveMessage($this.websockets[$SocketId], $BufferSize)
     }
     return $ret
   }
