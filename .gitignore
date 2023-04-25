@@ -1,2 +1,2 @@
 .env
-PwshWebSocketclient\PwshWebSocketclient.Format.ps1xml
+.\PwshWebSocketclient\PwshWebSocketclient.Format.ps1xml
