@@ -1,4 +1,4 @@
-Import-Module -Name '../PoshWebSocketClient'
+Import-Module -Name '.\PwshWebSocketClient'
 
 Connect-Websocket -Uri ws://localhost:8000/
 Send-Message -Message 'Applesauce'
@@ -7,4 +7,4 @@ Send-Message -Message 'Applesauce1'
 Receive-Message
 Get-WebsocketState
 
-Remove-Module PoshWebSocketClient
+Remove-Module PwshWebSocketClient
