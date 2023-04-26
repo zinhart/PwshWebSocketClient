@@ -66,6 +66,9 @@ class WebsocketClientConnection {
   WebSocketClientConnection([string] $uri) {
     [WebSocketClientConnection]::reset($this, $uri)
   }
+  WebSocketClientConnection([string] $uri, [string] $proxy) {
+    [WebSocketClientConnection]::reset($this, $uri, $proxy)
+  }
   static [void] cleanup([WebSocketClientConnection] $conn) { if ($null -ne $conn.websocket) {$conn.websocket.Dispose()} }
   static [void] reset([WebSocketClientConnection] $conn, [string] $uri) {
     #[WebsocketClientConnection]::cleanup($conn)
@@ -77,6 +80,21 @@ class WebsocketClientConnection {
     if ($null -ne $conn.cancellation_token_src) { $conn.cancellation_token_src.Dispose() }
     # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
     $conn.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
+    await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token)
+  }
+  static [void] reset([WebSocketClientConnection] $conn, [string] $uri, [string] $proxy_uri) {
+    #[WebsocketClientConnection]::cleanup($conn)
+    if ($null -ne $conn.websocket) {
+      if ($conn.websocket.State -eq 'Open') { return }
+      else { $conn.websocket.Dispose() }
+    }
+    $conn.websocket = New-Object System.Net.WebSockets.ClientWebSocket;
+    if ($null -ne $conn.cancellation_token_src) { $conn.cancellation_token_src.Dispose() }
+    # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
+    $conn.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
+    # set proxy here
+    $p =[System.Net.WebProxy]::new($proxy_uri, $true)
+    $conn.websocket.options.proxy = $p
     await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token)
   }
   static [void] disconnect([WebSocketClientConnection] $conn) {
@@ -158,6 +176,21 @@ class WebSocketClient {
       Status = 'Disconnected'
     }
     $websocket_connection = [WebSocketClientConnection]::new($uri)
+    if([WebSocketClientConnection]::isOpen($websocket_connection)) {
+      $this.websockets.add($websocket_connection)
+      $ret.Uri = $uri
+      $ret.SocketId = $this.websockets.Count - 1
+      $ret.Status = "Connected"
+    }
+    return $ret
+  }
+  [WebSocketClientConnectStatus] ConnectWebsocket([string] $uri, [string] $proxy) {
+    $ret = [WebSocketClientConnectStatus]@{
+      SocketId = -1
+      Uri = $uri
+      Status = 'Disconnected'
+    }
+    $websocket_connection = [WebSocketClientConnection]::new($uri, $proxy)
     if([WebSocketClientConnection]::isOpen($websocket_connection)) {
       $this.websockets.add($websocket_connection)
       $ret.Uri = $uri

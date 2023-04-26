@@ -34,9 +34,12 @@ $ws_client = New-WebSocketClient
 Function Connect-Websocket {
   Param (
     [Parameter(Mandatory=$true)]
-    [string]$Uri
+    [string]$Uri,
+    [Parameter(Mandatory=$false)]
+    [string]$Proxy=''
   )
-  return $ws_client.ConnectWebsocket($uri)
+  if($Proxy -ne '') { return $ws_client.ConnectWebsocket($uri, $proxy)  }
+  else { return $ws_client.ConnectWebsocket($uri) }
 }
 <#
 .SYNOPSIS
