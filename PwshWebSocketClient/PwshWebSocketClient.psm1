@@ -35,8 +35,17 @@ Function Connect-Websocket {
   Param (
     [Parameter(Mandatory=$true)]
     [string]$Uri,
+    # The Parameters below are taken from .net core 3 https://learn.microsoft.com/en-us/dotnet/api/system.net.websockets.clientwebsocketoptions?view=netcore-3.1
+    [Parameter(Mandatory=$false)]
+    [string]$Cookies='',
+    [Parameter(Mandatory=$false)]
+    [string]$Credentials='',
+    [Parameter(Mandatory=$false)]
+    $KeepAliveInterval=[System.TimeSpan]::zero, #https://stackoverflow.com/questions/40502921/net-websockets-forcibly-closed-despite-keep-alive-and-activity-on-the-connectio
     [Parameter(Mandatory=$false)]
     [string]$Proxy=''
+
+
   )
   if($Proxy -ne '') { return $ws_client.ConnectWebsocket($uri, $proxy)  }
   else { return $ws_client.ConnectWebsocket($uri) }
