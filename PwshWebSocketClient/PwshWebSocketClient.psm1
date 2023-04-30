@@ -1,3 +1,8 @@
+<#
+  Understanding standing the websocket protocol: https://stackoverflow.com/questions/26791107/ws-on-http-vs-wss-on-https
+  In order to become a true engineer don't avoid reading rfc's: https://www.rfc-editor.org/rfc/rfc6455
+#>
+
 #Get public and private function definition files.
 $Public  = @( Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -ErrorAction SilentlyContinue )
 $Private = @( Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue )
@@ -16,8 +21,9 @@ Foreach($import in @($Public + $Private))
 }
 # Typically we would: Export-ModuleMember -Function $Public.Basename
 # But since there is a shared state: create instance of websocket client
-$ws_client = New-WebSocketClient
+$WebSocketClient = New-WebSocketClient
 # Other
+
 
 <#
 .SYNOPSIS
@@ -35,20 +41,19 @@ Function Connect-Websocket {
   Param (
     [Parameter(Mandatory=$true)]
     [string]$Uri,
+    [Parameter(Mandatory=$false)]
+    [string]$Certificate, #https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate?view=netcore-3.1
     # The Parameters below are taken from .net core 3 https://learn.microsoft.com/en-us/dotnet/api/system.net.websockets.clientwebsocketoptions?view=netcore-3.1
     [Parameter(Mandatory=$false)]
-    [string]$Cookies='',
+    [string]$Cookies,
     [Parameter(Mandatory=$false)]
-    [string]$Credentials='',
+    [string]$Credentials,
     [Parameter(Mandatory=$false)]
-    $KeepAliveInterval=[System.TimeSpan]::zero, #https://stackoverflow.com/questions/40502921/net-websockets-forcibly-closed-despite-keep-alive-and-activity-on-the-connectio
+    [System.TimeSpan]$KeepAliveInterval=[System.TimeSpan]::zero, #https://stackoverflow.com/questions/40502921/net-websockets-forcibly-closed-despite-keep-alive-and-activity-on-the-connectio
     [Parameter(Mandatory=$false)]
-    [string]$Proxy=''
-
-
+    [string]$Proxy
   )
-  if($Proxy -ne '') { return $ws_client.ConnectWebsocket($uri, $proxy)  }
-  else { return $ws_client.ConnectWebsocket($uri) }
+  return $WebSocketClient.ConnectWebsocket($Uri, $Certificate, $Cookies, $Credentials, $KeepAliveInterval, $Proxy )
 }
 <#
 .SYNOPSIS
@@ -73,7 +78,7 @@ Function Send-Message {
     [Parameter(Mandatory=$false)]
     [int]$SocketId = 0
   )
-  return $ws_client.SendMessage($Message, $SocketId)
+  return $WebSocketClient.SendMessage($Message, $SocketId)
 }
 <#
 .SYNOPSIS
@@ -98,7 +103,7 @@ Function Receive-Message {
     [Parameter(Mandatory=$false)]
     [int]$SocketId = 0
   )
-  return $ws_client.ReceiveMessage($SocketId, $BufferSize)
+  return $WebSocketClient.ReceiveMessage($SocketId, $BufferSize)
 }
 
 <#
@@ -118,7 +123,7 @@ Function Disconnect-Websocket {
     [Parameter(Mandatory=$false)]
     [int]$SocketId = 0
   )
-  return $ws_client.DisconnectWebsocket($SocketId)
+  return $WebSocketClient.DisconnectWebsocket($SocketId)
 }
 
 <#
@@ -138,7 +143,7 @@ Function Get-WebsocketState {
     [Parameter(Mandatory=$false)]
     [int]$SocketId = 0
   )
-  return $ws_client.GetWebsocketState($SocketId)
+  return $WebSocketClient.GetWebsocketState($SocketId)
 }
 
 Export-ModuleMember Connect-Websocket,Disconnect-Websocket,Send-Message,Receive-Message, Get-WebsocketState

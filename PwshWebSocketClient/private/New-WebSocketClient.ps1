@@ -63,14 +63,20 @@ class WebSocketClientState {
 class WebsocketClientConnection {
   $websocket = $null
   $cancellation_token_src = $null;
-  WebSocketClientConnection([string] $uri) {
-    [WebSocketClientConnection]::reset($this, $uri)
+  WebSocketClientConnection([string] $Uri, [string] $Certificate, 
+  [string]$Cookies, [string]$Credentials, 
+  [System.TimeSpan]$KeepAliveInterval, 
+  [string] $Proxy) {
+    [WebSocketClientConnection]::reset($this, $Uri, $Certificate, $Cookies, $Credentials, $KeepAliveInterval, $Proxy)
   }
   WebSocketClientConnection([string] $uri, [string] $proxy) {
     [WebSocketClientConnection]::reset($this, $uri, $proxy)
   }
   static [void] cleanup([WebSocketClientConnection] $conn) { if ($null -ne $conn.websocket) {$conn.websocket.Dispose()} }
-  static [void] reset([WebSocketClientConnection] $conn, [string] $uri) {
+  static [void] reset([WebSocketClientConnection] $conn, [string] $Uri, [string] $Certificate, 
+  [string]$Cookies, [string]$Credentials, 
+  [System.TimeSpan]$KeepAliveInterval, 
+  [string] $Proxy) {
     #[WebsocketClientConnection]::cleanup($conn)
     if ($null -ne $conn.websocket) {
       if ($conn.websocket.State -eq 'Open') { return }
@@ -80,8 +86,15 @@ class WebsocketClientConnection {
     if ($null -ne $conn.cancellation_token_src) { $conn.cancellation_token_src.Dispose() }
     # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
     $conn.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
-    await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token)
+    # set socket options here
+    if ($Proxy) { # set proxy here
+      $ProxyUri =[System.Net.WebProxy]::new($Proxy, $true)
+      $conn.websocket.options.proxy = $ProxyUri
+    }
+
+    await $conn.websocket.ConnectAsync($Uri, $conn.cancellation_token_src.Token)
   }
+  <#
   static [void] reset([WebSocketClientConnection] $conn, [string] $uri, [string] $proxy_uri) {
     #[WebsocketClientConnection]::cleanup($conn)
     if ($null -ne $conn.websocket) {
@@ -97,6 +110,7 @@ class WebsocketClientConnection {
     $conn.websocket.options.proxy = $p
     await $conn.websocket.ConnectAsync($uri, $conn.cancellation_token_src.Token)
   }
+  #>
   static [void] disconnect([WebSocketClientConnection] $conn) {
     if ($null -eq $conn.websocket) { return }
     if ($conn.websocket.State -eq 'Open') { 
@@ -169,13 +183,17 @@ class WebSocketClient {
       return $false
     }
   }
-  [WebSocketClientConnectStatus] ConnectWebsocket([string] $uri) {
+  [WebSocketClientConnectStatus] ConnectWebsocket([string] $Uri, [string] $Certificate, 
+  [string]$Cookies, [string]$Credentials, 
+  [System.TimeSpan]$KeepAliveInterval, 
+  [string] $Proxy
+  ) {
     $ret = [WebSocketClientConnectStatus]@{
       SocketId = -1
-      Uri = $uri
+      Uri = $Uri
       Status = 'Disconnected'
     }
-    $websocket_connection = [WebSocketClientConnection]::new($uri)
+    $websocket_connection = [WebSocketClientConnection]::new($Uri, $Certificate, $Cookies, $Credentials, $KeepAliveInterval, $Proxy)
     if([WebSocketClientConnection]::isOpen($websocket_connection)) {
       $this.websockets.add($websocket_connection)
       $ret.Uri = $uri
@@ -184,6 +202,7 @@ class WebSocketClient {
     }
     return $ret
   }
+  <#
   [WebSocketClientConnectStatus] ConnectWebsocket([string] $uri, [string] $proxy) {
     $ret = [WebSocketClientConnectStatus]@{
       SocketId = -1
@@ -199,6 +218,7 @@ class WebSocketClient {
     }
     return $ret
   }
+  #>
   [WebSocketClientState] GetWebSocketState([int] $SocketId = 0) {
     $ret = [WebSocketClientState]@{
       SocketId = -1
