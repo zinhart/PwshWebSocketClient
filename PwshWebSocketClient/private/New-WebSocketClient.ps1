@@ -18,10 +18,11 @@ function Wait-Task {
   End {
     try {
       While (-not [System.Threading.Tasks.Task]::WaitAll($Tasks, $timeout)) {}
-      $Tasks.ForEach( { $_.GetAwaiter().GetResult() })
+      $Tasks.ForEach( { $_.GetAwaiter().GetResult() }) # using getresult avoid wrapping the exception in an aggregate exception
     }
     catch {
-      Write-Host $_.Exception.Message -ForegroundColor Red
+      #Write-Host $_.Exception.Message -ForegroundColor Red
+      Write-Host $_.Exception -ForegroundColor Red
       Write-Host "Stacktrace: " $_.ScriptStackTrace -ForegroundColor Red
     }
   }
@@ -107,16 +108,7 @@ class WebsocketClientConnection {
       $ProxyUri =[System.Net.WebProxy]::new($Proxy, $true)
       $conn.websocket.options.proxy = $ProxyUri
     }
-    try {
-      $conn.websocket.ConnectAsync($Uri, $conn.cancellation_token_src.Token).GetAwaiter().GetResult()
-      Write-host "$($conn.websocket.options)"
-    }
-    catch {
-      #Write-Host $_.Exception.Message
-      Write-Host $_.Exception -ForegroundColor Red
-      Write-Host "Stacktrace: " $_.ScriptStackTrace -ForegroundColor Red
-    }
-    #await $conn.websocket.ConnectAsync($Uri, $conn.cancellation_token_src.Token)
+    await $conn.websocket.ConnectAsync($Uri, $conn.cancellation_token_src.Token)
   }
   static [void] disconnect([WebSocketClientConnection] $conn) {
     if ($null -eq $conn.websocket) { return }
