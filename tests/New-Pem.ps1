@@ -11,7 +11,8 @@ Using stackprotector's approach, I hit a few snags that others will undoubtedly 
 #>
 # Create a self-signed exportable certificate
 # https://stackoverflow.com/questions/65083411/creating-pem-file-through-powershell
-$temp = New-SelfSignedCertificate -Subject "localhost" -TextExtension @("2.5.29.17={text}DNS=localhost&IPAddress=127.0.0.1&IPAddress=::1") -KeyExportPolicy Exportable  
+#$temp = New-SelfSignedCertificate -Subject "localhost" -TextExtension @("2.5.29.17={text}DNS=localhost&IPAddress=127.0.0.1&IPAddress=::1") -KeyExportPolicy Exportable
+$temp = New-SelfSignedCertificate -DnsName "localhost" -KeyExportPolicy Exportable
 
 # Identify the cert to export with the script
 $cert = get-item "cert:\localmachine\my\$($temp.Thumbprint)"
@@ -33,7 +34,13 @@ $KeyBase64
 $CertBase64
 -----END CERTIFICATE-----
 "@
+$Cer  = @"
+-----BEGIN CERTIFICATE-----
+$CertBase64
+-----END CERTIFICATE-----
+"@
 
 # Output to file
-$Pem | Out-File -FilePath .\tests\cert.pem -Encoding Ascii
+$Pem | Out-File -FilePath .\tests\localhost.pem -Encoding Ascii
+$Cer | Out-File -FilePath .\tests\localhost.cer -Encoding Ascii
 

@@ -87,12 +87,36 @@ class WebsocketClientConnection {
     # the proper way to create a cancellation token: https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtokensource?view=net-7.0
     $conn.cancellation_token_src = New-Object System.Threading.CancellationTokenSource;
     # set socket options here
+    if ($Certificate) { # set certificate
+        # The path to the certificate.
+        # Load the certificate into an X509Certificate object.
+        [System.Security.Cryptography.X509Certificates.X509Certificate2] $CertObj = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Certificate) 
+        #$conn.websocket.options.ClientCertificates.Add($CertObj)
+        $conn.websocket.options.ClientCertificates = [System.Security.Cryptography.X509Certificates.X509CertificateCollection]::new()
+        $conn.websocket.options.ClientCertificates.Add($CertObj)
+        #Write-Host  "Here: $($conn.websocket.options.getType().getProperties())"
+        #$test = New-Object System.Net.WebSockets.ClientWebSocketOptions;
+        #Write-Host "Here 2: $test"
+        $callback = {
+          param($one, $two, $three, $four)
+          return $true
+        }
+        #$conn.websocket.options.RemoteCertificateValidationCallback = $callback
+    }
     if ($Proxy) { # set proxy here
       $ProxyUri =[System.Net.WebProxy]::new($Proxy, $true)
       $conn.websocket.options.proxy = $ProxyUri
     }
-
-    await $conn.websocket.ConnectAsync($Uri, $conn.cancellation_token_src.Token)
+    try {
+      $conn.websocket.ConnectAsync($Uri, $conn.cancellation_token_src.Token).GetAwaiter().GetResult()
+      Write-host "$($conn.websocket.options)"
+    }
+    catch {
+      #Write-Host $_.Exception.Message
+      Write-Host $_.Exception -ForegroundColor Red
+      Write-Host "Stacktrace: " $_.ScriptStackTrace -ForegroundColor Red
+    }
+    #await $conn.websocket.ConnectAsync($Uri, $conn.cancellation_token_src.Token)
   }
   <#
   static [void] reset([WebSocketClientConnection] $conn, [string] $uri, [string] $proxy_uri) {
