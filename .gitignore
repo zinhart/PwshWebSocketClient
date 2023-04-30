@@ -1,2 +1,5 @@
 .env
 .\PwshWebSocketclient\PwshWebSocketclient.Format.ps1xml
+*.pem
+*.der
+*.cer
