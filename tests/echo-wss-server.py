@@ -26,11 +26,8 @@ async def echo(websocket, path):
 
 interface = "localhost"
 port = int(sys.argv[1]) if len(sys.argv) > 1 else 8001
-# ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-#ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-#ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_3)
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-localhost_pem = pathlib.Path(__file__).with_name("localhost.pem")
+localhost_pem = pathlib.Path(__file__).with_name("ServerDonkey.pem")
 ssl_context.load_cert_chain(localhost_pem)
 
 start_server = websockets.serve(echo, interface, port, ssl=ssl_context)
