@@ -32,10 +32,28 @@ $WebSocketClient = New-WebSocketClient
   Initiate a managed websocket connection.
 .PARAMETER Uri
   Open a Websocket Connection to the Uri specified in the parameter.
+.PARAMETER Certificate
+  The Filepath to a X.509 in pfx format. If this argument is present then the password must be supplied CertificatePass 
+.PARAMETER CertificatePass
+  The password to the X.509 certificate supplied in the Certificate argument.
+.PARAMETER KeepAliveInterval
+  Sets the frequency at which to send Ping/Pong keep-alive control frames.
+  Dotnet sets the default is two minutes, the default behavior of this module is keep the websocket connect alive no matter what.
+  This is accomplished by setting the default value of this parameter to [System.TimeSpan]::zero
+.PARAMETER Proxy
+  A Uri to a proxy websocket server.
 .EXAMPLE
   Connect-WebSocket -Uri 'ws://uri here'
 .EXAMPLE
   Connect-WebSocket -Uri 'wss://uri here'
+.EXAMPLE
+  Connect-WebSocket -Uri 'wss://uri here' -KeepAliveInterval [System.TimeSpan]::zero
+.EXAMPLE
+  Connect-WebSocket -Uri 'ws://uri here' -Proxy 'ws://proxy_uri'
+.EXAMPLE
+  Connect-WebSocket -Uri 'wss://uri here' -Proxy 'wss://proxy_uri'
+.EXAMPLE
+  Connect-WebSocket -Uri 'wss://uri here' --Certificate path-to-pfx-format-certificate --CertificatePass pfx-cert-pass
 #>
 Function Connect-Websocket {
  [CmdletBinding(DefaultParameterSetName='Default')]
