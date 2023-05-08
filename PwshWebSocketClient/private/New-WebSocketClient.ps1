@@ -64,17 +64,19 @@ class WebSocketClientState {
 class WebsocketClientConnection {
   $websocket = $null
   $cancellation_token_src = $null;
-  WebSocketClientConnection([string] $Uri, [string] $Certificate, 
+  WebSocketClientConnection([string] $Uri, 
+  [string] $Certificate, [string] $CertificatePass, 
   [string]$Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy) {
-    [WebSocketClientConnection]::reset($this, $Uri, $Certificate, $Cookies, $Credentials, $KeepAliveInterval, $Proxy)
+    [WebSocketClientConnection]::reset($this, $Uri, $Certificate, $CertificatePass, $Cookies, $Credentials, $KeepAliveInterval, $Proxy)
   }
   WebSocketClientConnection([string] $uri, [string] $proxy) {
     [WebSocketClientConnection]::reset($this, $uri, $proxy)
   }
   static [void] cleanup([WebSocketClientConnection] $conn) { if ($null -ne $conn.websocket) {$conn.websocket.Dispose()} }
-  static [void] reset([WebSocketClientConnection] $conn, [string] $Uri, [string] $Certificate, 
+  static [void] reset([WebSocketClientConnection] $conn, [string] $Uri, 
+  [string] $Certificate, [string] $CertificatePass, 
   [string]$Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy) {
@@ -91,8 +93,8 @@ class WebsocketClientConnection {
     if ($Certificate) { # set certificate
         # The path to the certificate.
         # Load the certificate into an X509Certificate object.
-        $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Certificate,'1234')
-        Write-Host "$cert"
+        $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Certificate,$CertificatePass)
+        #Write-Host "$cert"
         $conn.websocket.options.ClientCertificates.add($cert)
         <#
         $conn.websocket.options.RemoteCertificateValidationCallback = {
@@ -101,6 +103,15 @@ class WebsocketClientConnection {
           return $true
         }
         #>
+    }
+    if ($Cookies) {
+
+    }
+    if ($Credentials) {
+
+    }
+    if ($KeepAliveInterval) {
+      $conn.websocket.options.KeepAliveInterval = $KeepAliveInterval 
     }
     if ($Proxy) { # set proxy here
       $ProxyUri =[System.Net.WebProxy]::new($Proxy, $true)
@@ -180,7 +191,8 @@ class WebSocketClient {
       return $false
     }
   }
-  [WebSocketClientConnectStatus] ConnectWebsocket([string] $Uri, [string] $Certificate, 
+  [WebSocketClientConnectStatus] ConnectWebsocket([string] $Uri, 
+  [string] $Certificate, [string] $CertificatePass, 
   [string]$Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy
@@ -190,7 +202,7 @@ class WebSocketClient {
       Uri = $Uri
       Status = 'Disconnected'
     }
-    $websocket_connection = [WebSocketClientConnection]::new($Uri, $Certificate, $Cookies, $Credentials, $KeepAliveInterval, $Proxy)
+    $websocket_connection = [WebSocketClientConnection]::new($Uri, $Certificate, $CertificatePass, $Cookies, $Credentials, $KeepAliveInterval, $Proxy)
     if([WebSocketClientConnection]::isOpen($websocket_connection)) {
       $this.websockets.add($websocket_connection)
       $ret.Uri = $uri
@@ -199,23 +211,6 @@ class WebSocketClient {
     }
     return $ret
   }
-  <#
-  [WebSocketClientConnectStatus] ConnectWebsocket([string] $uri, [string] $proxy) {
-    $ret = [WebSocketClientConnectStatus]@{
-      SocketId = -1
-      Uri = $uri
-      Status = 'Disconnected'
-    }
-    $websocket_connection = [WebSocketClientConnection]::new($uri, $proxy)
-    if([WebSocketClientConnection]::isOpen($websocket_connection)) {
-      $this.websockets.add($websocket_connection)
-      $ret.Uri = $uri
-      $ret.SocketId = $this.websockets.Count - 1
-      $ret.Status = "Connected"
-    }
-    return $ret
-  }
-  #>
   [WebSocketClientState] GetWebSocketState([int] $SocketId = 0) {
     $ret = [WebSocketClientState]@{
       SocketId = -1

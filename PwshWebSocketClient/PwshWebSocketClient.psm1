@@ -38,11 +38,14 @@ $WebSocketClient = New-WebSocketClient
   Connect-WebSocket -Uri 'wss://uri here'
 #>
 Function Connect-Websocket {
+ [CmdletBinding(DefaultParameterSetName='Default')]
   Param (
     [Parameter(Mandatory=$true)]
     [string]$Uri,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$true, ParameterSetName="TLS Auth")]
     [string]$Certificate, #https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate?view=netcore-3.1
+    [Parameter(Mandatory=$true, ParameterSetName="TLS Auth")]
+    [string]$CertificatePass,
     # The Parameters below are taken from .net core 3 https://learn.microsoft.com/en-us/dotnet/api/system.net.websockets.clientwebsocketoptions?view=netcore-3.1
     [Parameter(Mandatory=$false)]
     [string]$Cookies,
@@ -53,7 +56,7 @@ Function Connect-Websocket {
     [Parameter(Mandatory=$false)]
     [string]$Proxy
   )
-  return $WebSocketClient.ConnectWebsocket($Uri, $Certificate, $Cookies, $Credentials, $KeepAliveInterval, $Proxy )
+  return $WebSocketClient.ConnectWebsocket($Uri, $Certificate, $CertificatePass, $Cookies, $Credentials, $KeepAliveInterval, $Proxy )
 }
 <#
 .SYNOPSIS
