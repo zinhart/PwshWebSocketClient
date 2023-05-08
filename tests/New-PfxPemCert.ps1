@@ -12,8 +12,10 @@ Using stackprotector's approach, I hit a few snags that others will undoubtedly 
 # Create a self-signed exportable certificate
 # https://stackoverflow.com/questions/65083411/creating-pem-file-through-powershell
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$OutFileName
+  [Parameter(Mandatory=$true)]
+  [string]$OutFileName
+  [Parameter(Mandatory=$true)]
+  [string]$PfxPass
 )
 #for a servide side ssl cert
 $temp = New-SelfSignedCertificate -Subject "localhost" -TextExtension @("2.5.29.17={text}DNS=localhost&IPAddress=127.0.0.1&IPAddress=::1") -KeyExportPolicy Exportable
@@ -48,5 +50,5 @@ $CertBase64
 # Output to file
 $Pem | Out-File -FilePath ".\tests\$OutFileName.pem" -Encoding Ascii
 $Cer | Out-File -FilePath ".\tests\$OutFileName.cer" -Encoding Ascii
-$temp | Export-PfxCertificate -FilePath ".\tests\$OutFileName.pfx" -Password (ConvertTo-SecureString -String '1234' -AsPlainText -Force)
+$temp | Export-PfxCertificate -FilePath ".\tests\$OutFileName.pfx" -Password (ConvertTo-SecureString -String $PfxPass -AsPlainText -Force)
 
