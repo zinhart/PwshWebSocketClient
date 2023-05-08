@@ -91,18 +91,16 @@ class WebsocketClientConnection {
     if ($Certificate) { # set certificate
         # The path to the certificate.
         # Load the certificate into an X509Certificate object.
-        [System.Security.Cryptography.X509Certificates.X509Certificate2] $CertObj = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Certificate) 
-        #$conn.websocket.options.ClientCertificates.Add($CertObj)
-        $conn.websocket.options.ClientCertificates = [System.Security.Cryptography.X509Certificates.X509CertificateCollection]::new()
-        $conn.websocket.options.ClientCertificates.Add($CertObj)
-        #Write-Host  "Here: $($conn.websocket.options.getType().getProperties())"
-        #$test = New-Object System.Net.WebSockets.ClientWebSocketOptions;
-        #Write-Host "Here 2: $test"
-        $callback = {
-          param($one, $two, $three, $four)
+        $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Certificate,'1234')
+        Write-Host "$cert"
+        $conn.websocket.options.ClientCertificates.add($cert)
+        <#
+        $conn.websocket.options.RemoteCertificateValidationCallback = {
+          param($sender, $certificate, $chain, $sslPolicyErrors)
+          Write-Host $certificate
           return $true
         }
-        #$conn.websocket.options.RemoteCertificateValidationCallback = $callback
+        #>
     }
     if ($Proxy) { # set proxy here
       $ProxyUri =[System.Net.WebProxy]::new($Proxy, $true)
@@ -113,8 +111,8 @@ class WebsocketClientConnection {
   static [void] disconnect([WebSocketClientConnection] $conn) {
     if ($null -eq $conn.websocket) { return }
     if ($conn.websocket.State -eq 'Open') { 
-      $conn.cancellation_token_src.cancelafter([TimeSpan]::Fromseconds(2))
-      await $conn.websocket.CloseOutputAsync([System.Net.WebSockets.WebSocketCloseStatus]::Empty,"", [System.Threading.CancellationToken]::None)
+      #$conn.cancellation_token_src.cancelafter([TimeSpan]::Fromseconds(2))
+      await $conn.websocket.CloseOutputAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,"", [System.Threading.CancellationToken]::None)
       await $conn.websocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, "", [System.Threading.CancellationToken]::None)
     }
     $conn.websocket.Dispose()
