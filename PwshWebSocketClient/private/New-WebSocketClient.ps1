@@ -65,7 +65,7 @@ class WebsocketClientConnection {
   $websocket = $null
   $cancellation_token_src = $null;
   WebSocketClientConnection([string] $Uri, 
-  [string] $Certificate, [string] $CertificatePass, 
+  [string] $Certificate, [System.Security.SecureString] $CertificatePass, 
   [string]$Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy) {
@@ -76,7 +76,7 @@ class WebsocketClientConnection {
   }
   static [void] cleanup([WebSocketClientConnection] $conn) { if ($null -ne $conn.websocket) {$conn.websocket.Dispose()} }
   static [void] reset([WebSocketClientConnection] $conn, [string] $Uri, 
-  [string] $Certificate, [string] $CertificatePass, 
+  [string] $Certificate, [System.Security.SecureString] $CertificatePass, 
   [string]$Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy) {
@@ -192,7 +192,7 @@ class WebSocketClient {
     }
   }
   [WebSocketClientConnectStatus] ConnectWebsocket([string] $Uri, 
-  [string] $Certificate, [string] $CertificatePass, 
+  [string] $Certificate, [System.Security.SecureString] $CertificatePass, 
   [string]$Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy

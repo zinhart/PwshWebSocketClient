@@ -35,7 +35,7 @@ $WebSocketClient = New-WebSocketClient
 .PARAMETER Certificate
   The Filepath to a X.509 in pfx format. If this argument is present then the password must be supplied CertificatePass 
 .PARAMETER CertificatePass
-  The password to the X.509 certificate supplied in the Certificate argument.
+  The password to the X.509 certificate supplied in the Certificate argument, wrapped as a secure string.
 .PARAMETER KeepAliveInterval
   Sets the frequency at which to send Ping/Pong keep-alive control frames.
   Dotnet sets the default is two minutes, the default behavior of this module is keep the websocket connect alive no matter what.
@@ -63,7 +63,7 @@ Function Connect-Websocket {
     [Parameter(Mandatory=$true, ParameterSetName="TLS Auth")]
     [string]$Certificate, #https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate?view=netcore-3.1
     [Parameter(Mandatory=$true, ParameterSetName="TLS Auth")]
-    [string]$CertificatePass,
+    [System.Security.SecureString]$CertificatePass,
     # The Parameters below are taken from .net core 3 https://learn.microsoft.com/en-us/dotnet/api/system.net.websockets.clientwebsocketoptions?view=netcore-3.1
     [Parameter(Mandatory=$false)]
     [string]$Cookies,

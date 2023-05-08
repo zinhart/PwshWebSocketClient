@@ -13,7 +13,7 @@ Using stackprotector's approach, I hit a few snags that others will undoubtedly 
 # https://stackoverflow.com/questions/65083411/creating-pem-file-through-powershell
 param(
   [Parameter(Mandatory=$true)]
-  [string]$OutFileName
+  [string]$OutFileName,
   [Parameter(Mandatory=$true)]
   [string]$PfxPass
 )
