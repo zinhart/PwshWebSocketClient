@@ -36,6 +36,8 @@ $WebSocketClient = New-WebSocketClient
   The Filepath to a X.509 in pfx format. If this argument is present then the password must be supplied CertificatePass 
 .PARAMETER CertificatePass
   The password to the X.509 certificate supplied in the Certificate argument, wrapped as a secure string.
+.PARAMETER Cookies
+  A collection of cookies to send along with the initial upgrade into a websocket. The datatype to supply to this parameter is [System.Net.CookieContainer]
 .PARAMETER KeepAliveInterval
   Sets the frequency at which to send Ping/Pong keep-alive control frames.
   Dotnet sets the default is two minutes, the default behavior of this module is keep the websocket connect alive no matter what.
@@ -54,6 +56,13 @@ $WebSocketClient = New-WebSocketClient
   Connect-WebSocket -Uri 'wss://uri here' -Proxy 'wss://proxy_uri'
 .EXAMPLE
   Connect-WebSocket -Uri 'wss://uri here' --Certificate path-to-pfx-format-certificate --CertificatePass pfx-cert-pass
+.Example
+  $Cookie = [System.Net.Cookie]::new("donkey", "Important value: heee haw")
+  $Cookie.Domain='localhost'
+  $Cookie.HttpOnly = $true
+  $CookieJar = New-Object System.Net.CookieContainer
+  $CookieJar.add($Cookie)
+  Connect-WebSocket -Uri 'ws://uri here' -Cookies $CookieJar
 #>
 Function Connect-Websocket {
  [CmdletBinding(DefaultParameterSetName='Default')]
@@ -66,7 +75,7 @@ Function Connect-Websocket {
     [System.Security.SecureString]$CertificatePass,
     # The Parameters below are taken from .net core 3 https://learn.microsoft.com/en-us/dotnet/api/system.net.websockets.clientwebsocketoptions?view=netcore-3.1
     [Parameter(Mandatory=$false)]
-    [string]$Cookies,
+    [System.Net.CookieContainer]$Cookies,
     [Parameter(Mandatory=$false)]
     [string]$Credentials,
     [Parameter(Mandatory=$false)]

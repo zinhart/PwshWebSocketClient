@@ -66,7 +66,7 @@ class WebsocketClientConnection {
   $cancellation_token_src = $null;
   WebSocketClientConnection([string] $Uri, 
   [string] $Certificate, [System.Security.SecureString] $CertificatePass, 
-  [string]$Cookies, [string]$Credentials, 
+  [System.Net.CookieContainer] $Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy) {
     [WebSocketClientConnection]::reset($this, $Uri, $Certificate, $CertificatePass, $Cookies, $Credentials, $KeepAliveInterval, $Proxy)
@@ -77,7 +77,7 @@ class WebsocketClientConnection {
   static [void] cleanup([WebSocketClientConnection] $conn) { if ($null -ne $conn.websocket) {$conn.websocket.Dispose()} }
   static [void] reset([WebSocketClientConnection] $conn, [string] $Uri, 
   [string] $Certificate, [System.Security.SecureString] $CertificatePass, 
-  [string]$Cookies, [string]$Credentials, 
+  [System.Net.CookieContainer] $Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy) {
     #[WebsocketClientConnection]::cleanup($conn)
@@ -105,13 +105,13 @@ class WebsocketClientConnection {
         #>
     }
     if ($Cookies) {
-
+        $conn.websocket.options.Cookies = $Cookies
     }
     if ($Credentials) {
 
     }
     if ($KeepAliveInterval) {
-      $conn.websocket.options.KeepAliveInterval = $KeepAliveInterval 
+      #$conn.websocket.options.KeepAliveInterval = $KeepAliveInterval 
     }
     if ($Proxy) { # set proxy here
       $ProxyUri =[System.Net.WebProxy]::new($Proxy, $true)
@@ -193,7 +193,7 @@ class WebSocketClient {
   }
   [WebSocketClientConnectStatus] ConnectWebsocket([string] $Uri, 
   [string] $Certificate, [System.Security.SecureString] $CertificatePass, 
-  [string]$Cookies, [string]$Credentials, 
+  [System.Net.CookieContainer] $Cookies, [string]$Credentials, 
   [System.TimeSpan]$KeepAliveInterval, 
   [string] $Proxy
   ) {
