@@ -38,6 +38,8 @@ $WebSocketClient = New-WebSocketClient
   The password to the X.509 certificate supplied in the Certificate argument, wrapped as a secure string.
 .PARAMETER Cookies
   A collection of cookies to send along with the initial upgrade into a websocket. The datatype to supply to this parameter is [System.Net.CookieContainer]
+.PARAMETER NetworkCredentials
+  Parameters to be used in network level authentication schemes including basic, digest, NTLM, and Kerberos authentication. See Documentation for System.Net.NetworkCredential.
 .PARAMETER KeepAliveInterval
   Sets the frequency at which to send Ping/Pong keep-alive control frames.
   Dotnet sets the default is two minutes, the default behavior of this module is keep the websocket connect alive no matter what.
@@ -77,13 +79,13 @@ Function Connect-Websocket {
     [Parameter(Mandatory=$false)]
     [System.Net.CookieContainer]$Cookies,
     [Parameter(Mandatory=$false)]
-    [string]$Credentials,
+    [System.Net.NetworkCredential]$NetworkCredential,
     [Parameter(Mandatory=$false)]
     [System.TimeSpan]$KeepAliveInterval=[System.TimeSpan]::zero, #https://stackoverflow.com/questions/40502921/net-websockets-forcibly-closed-despite-keep-alive-and-activity-on-the-connectio
     [Parameter(Mandatory=$false)]
     [string]$Proxy
   )
-  return $WebSocketClient.ConnectWebsocket($Uri, $Certificate, $CertificatePass, $Cookies, $Credentials, $KeepAliveInterval, $Proxy )
+  return $WebSocketClient.ConnectWebsocket($Uri, $Certificate, $CertificatePass, $Cookies, $NetworkCredential, $KeepAliveInterval, $Proxy )
 }
 <#
 .SYNOPSIS
