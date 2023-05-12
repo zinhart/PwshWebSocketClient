@@ -33,7 +33,7 @@ $WebSocketClient = New-WebSocketClient
 .PARAMETER Uri
   Open a Websocket Connection to the Uri specified in the parameter.
 .PARAMETER Certificate
-  The Filepath to a X.509 in pfx format. If this argument is present then the password must be supplied CertificatePass 
+  The Filepath to a X.509 in pfx format. If this argument is present then the password must be supplied CertificatePass
 .PARAMETER CertificatePass
   The password to the X.509 certificate supplied in the Certificate argument, wrapped as a secure string.
 .PARAMETER Cookies
